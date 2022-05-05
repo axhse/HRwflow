@@ -1,0 +1,19 @@
+﻿@model SettingsVM
+@{
+	ViewData["Title"] = "Delete";
+}
+
+<p class="text-dark text-center mt-4 fw-bold">Удалить аккаунт? Это действие нельзя отменить.</p>
+
+<div class="container mt-4" align="center">
+	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
+		<form method="POST">
+			<div class="row">
+				<div>
+					<button type="submit" class="btn btn-danger" name="delete">Да, удалить</button>
+					<a href="/account/settings" class="btn btn-success">Нет, вернуться</a>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>

@@ -1,0 +1,47 @@
+﻿@model SettingsVM
+@{
+	ViewData["Title"] = "Settings";
+}
+
+<div class="navbar custom-navbar border-bottom">
+    <div class="container" align="center">
+        <div class="col-4 col-sm-3 col-xl-2" align="center">
+            <div class="btn-group">
+                <button type="button" class="btn btn-secondary dropdown-toggle fw-bold" data-bs-toggle="dropdown" aria-expanded="false">
+                    ☰
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="/account">Главная</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="text-danger dropdown-item" href="/account/exit">Выйти</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-4 col-sm-6 col-xl-8 mt-3" align="center">
+			<p class="text-dark fw-bold">Настройки</p>
+		</div>
+        <div class="col-4 col-sm-3 col-xl-2"></div>
+    </div>
+</div>
+
+<div class="container mt-4" align="center">
+	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
+		<form method="POST">
+			<div class="form-floating mt-3">
+				<input class="form-control" id="nameInput" name="name" placeholder="Имя" value="@Model.Customer.Properties.Name">
+				<label for="nameInput">Имя</label>
+				@if (!Model.NameIsCorrect)
+				{
+					<p class="text-info">Имя должно состоять из русских или английских букв, 
+						иметь длину до 50 символов. Можно использовать пробел и дефис.</p>
+				}
+			</div>
+			<div class="mt-4">
+				<button type="submit" class="btn btn-success">Сохранить</button>
+			</div>
+		</form>
+		<div class="settings-delete-link">
+			<a href="/account/delete" class="link-danger">Удалить аккаунт</a>
+		</div>
+	</div>
+</div>

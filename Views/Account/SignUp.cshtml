@@ -1,0 +1,57 @@
+﻿@model SignUpVM
+@{
+	ViewData["Title"] = "Sign Up";
+}
+
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 col-sm-4">
+			<a class="link-dark" href="/account/signin">Авторизоваться</a>
+		</div>
+		<div class="col-6 col-sm-4 mt-3">
+			<p class="text-dark fw-bold">Регистрация</p>
+		</div>
+		<div class="col-6 col-sm-4">
+			<a class="link-dark" href="/">На главную</a>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-4" align="center">
+	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
+		<form method="POST">
+			<div class="mt-3">
+				<label for="usernameInput" class="form-label">Логин</label>
+				<input type="text" class="form-control text-center" id="usernameInput" name="username" value="@Model.DefaultUsername">
+				@if (!Model.IsUsernameCorrect)
+				{
+					<p class="text-info">Логин должен состоять из букв латинского алфавита 
+						и цифр, иметь длину от 6 до 20 символов.</p>
+				}
+				@if (!Model.IsUsernameUnused && Model.IsUsernameCorrect)
+				{
+					<p class="text-info">Данный логин уже занят.</p>
+				}
+			</div>
+			<div class="mt-3">
+				<label for="passwordInput" class="form-label">Пароль</label>
+				<input type="password" class="form-control text-center" id="passwordInput" name="password">
+				@if (!Model.IsPasswordCorrect)
+				{
+					<p class="text-info">Пароль должен иметь длину от 8 до 40 символов.</p>
+				}
+			</div>
+			<div class="mt-3">
+				<label for="passwordConfirmationInput" class="form-label">Повтор пароля</label>
+				<input type="password" class="form-control text-center" id="passwordConfirmationInput" name="passwordConfirmation">
+				@if (!Model.IsPasswordConfirmationCorrect)
+				{
+					<p class="text-info">Пароли должны совпадать.</p>
+				}
+			</div>
+			<div class="mt-4">
+				<button type="submit" class="btn btn-primary">Создать аккаунт</button>
+			</div>
+		</form>
+	</div>
+</div>

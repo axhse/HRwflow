@@ -1,0 +1,36 @@
+﻿
+.custom-body {
+    background-color: rgb(253, 253, 253);
+}
+
+.custom-footer {
+    background-color: rgb(249, 249, 249);
+}
+
+.custom-navbar {
+    background-color: rgb(251, 251, 251);
+}
+
+.settings-delete-link {
+    margin-top: 250px;
+}
+
+
+.text-hr {
+    display: flex;
+    flex-basis: 100%;
+    align-items: center;
+    color: gray;
+    margin: 8px 0px;
+}
+
+.text-hr:before,
+.text-hr:after {
+    content: "";
+    flex-grow: 1;
+    background: darkgray;
+    height: 1px;
+    font-size: 0px;
+    line-height: 0px;
+    margin: 0px 10px;
+}
