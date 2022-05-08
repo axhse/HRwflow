@@ -10,14 +10,13 @@ namespace HRwflow.Models.Data
             builder.HasKey(customer => customer.Username);
             builder.HasIndex(customer => customer.Username).IsUnique();
             builder.Property(customer => customer.Username).IsRequired();
-            builder.Property(authData => authData.Username).ValueGeneratedOnAdd();
+            builder.Property(customer => customer.Username).ValueGeneratedOnAdd();
             builder.Property(customer => customer.Username).HasMaxLength(20);
             builder.Property(customer => customer.Properties).IsRequired();
             // Current Length +- 113;
             builder.Property(customer => customer.Properties).HasMaxLength(500);
             builder.Property(customer => customer.Properties)
                    .HasConversion(new JsonConverter<CustomerProperties>());
-            builder.ToTable(nameof(Customer));
             builder.ToTable(nameof(Customer));
         }
     }

@@ -23,4 +23,17 @@
     </div>
 </div>
 
+<div class="container" align="center">
+        <p class="text-hr mt-5">Все команды</p>
+    <div class="mt-4" align="center">
+        @foreach (var teamInfo in Model.CustomerInfo.TeamInfos)
+        {
+	        <a class="btn btn-light btn-lg list-group-item-primary team-btn"
+                href="/workplace/team/@teamInfo.TeamId">@teamInfo.Properties.Name</a>
+        }
+	    <a class="btn btn-light btn-lg list-group-item-success team-btn fw-bold
+            create-team-btn" href="/workplace/createteam">+</a>
+    </div>
+</div>
+
 

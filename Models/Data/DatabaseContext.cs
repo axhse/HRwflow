@@ -7,12 +7,15 @@ namespace HRwflow.Models.Data
         where TEntity : class
     {
         protected DatabaseContext(DbContextOptions options) : base(options)
-        { }
+        {
+            // Database.EnsureCreated();
+        }
 
         protected DatabaseContext(string connectionString)
             : base(new DbContextOptions<DatabaseContext<TEntity>>())
         {
             Database.SetConnectionString(connectionString);
+            // Database.EnsureCreated();
         }
 
         public DbSet<TEntity> Items { get; set; }

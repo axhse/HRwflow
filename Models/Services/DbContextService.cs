@@ -1,7 +1,6 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
 using HRwflow.Models.Data;
-using HRwflow.Models.Services;
 
 namespace HRwflow.Models
 {
@@ -9,7 +8,7 @@ namespace HRwflow.Models
         where TEntity : class
     {
         private readonly IDatabaseContext<TEntity> _databaseContext;
-        private readonly object _syncRoot = new();
+        private readonly ItemLocker<object> _locker = new();
 
         public DbContextService(IDatabaseContext<TEntity> databaseContext)
         {
@@ -18,138 +17,139 @@ namespace HRwflow.Models
 
         public Task<TaskResult> Delete(TPrimaryKey key)
         {
-            lock (_syncRoot)
+            var certificate = _locker.Acquire(key);
+            try
             {
-                try
+                var entity = _databaseContext.Items.Find(key);
+                if (entity is null)
                 {
-                    var entity = _databaseContext.Items.Find(key);
-                    if (entity is null)
-                    {
-                        return Task.FromResult(TaskResult.Unsuccessful());
-                    }
-                    _databaseContext.Items.Remove(entity);
-                    _databaseContext.SaveChangesAsync();
-                    return Task.FromResult(TaskResult.Successful());
+                    return Task.FromResult(TaskResult.Unsuccessful());
                 }
-                catch
-                {
-                    return Task.FromResult(TaskResult.Uncompleted());
-                }
+                _databaseContext.Items.Remove(entity);
+                _databaseContext.SaveChangesAsync().Wait();
+                return Task.FromResult(TaskResult.Successful());
+            }
+            catch
+            {
+                return Task.FromResult(TaskResult.Uncompleted());
+            }
+            finally
+            {
+                certificate.ReportRelease();
             }
         }
 
         public Task<TaskResult<TEntity>> Get(TPrimaryKey key)
         {
-            lock (_syncRoot)
+            var certificate = _locker.Acquire(key);
+            try
             {
-                try
+                var entity = _databaseContext.Items.Find(key);
+                if (entity is null)
                 {
-                    var entity = _databaseContext.Items.Find(key);
-                    if (entity is null)
-                    {
-                        return Task.FromResult(TaskResult.Unsuccessful<TEntity>());
-                    }
-                    return Task.FromResult(TaskResult.Successful(entity));
+                    return Task.FromResult(TaskResult.Unsuccessful<TEntity>());
                 }
-                catch
-                {
-                    return Task.FromResult(TaskResult.Uncompleted<TEntity>());
-                }
+                return Task.FromResult(TaskResult.Successful(entity));
+            }
+            catch
+            {
+                return Task.FromResult(TaskResult.Uncompleted<TEntity>());
+            }
+            finally
+            {
+                certificate.ReportRelease();
             }
         }
 
         public Task<TaskResult<TPrimaryKey>> Insert(TEntity entity)
         {
-            if (!TryGetPrimaryKey(entity, out TPrimaryKey entityKey))
+            var key = GetPrimaryKey(entity);
+            var certificate = _locker.Acquire(key);
+            try
+            {
+                if (_databaseContext.Items.Find(key) is null)
+                {
+                    _databaseContext.Items.Add(entity);
+                    _databaseContext.SaveChangesAsync().Wait();
+                    return Task.FromResult(TaskResult.Successful(key));
+                }
+                return Task.FromResult(TaskResult.Unsuccessful<TPrimaryKey>());
+            }
+            catch
             {
                 return Task.FromResult(TaskResult.Uncompleted<TPrimaryKey>());
             }
-            lock (_syncRoot)
+            finally
             {
-                try
-                {
-                    if (_databaseContext.Items.Find(entityKey) is null)
-                    {
-                        _databaseContext.Items.Add(entity);
-                        _databaseContext.SaveChangesAsync();
-                        return Task.FromResult(TaskResult.Successful(entityKey));
-                    }
-                    return Task.FromResult(TaskResult.Unsuccessful<TPrimaryKey>());
-                }
-                catch
-                {
-                    return Task.FromResult(TaskResult.Uncompleted<TPrimaryKey>());
-                }
+                certificate.ReportRelease();
             }
         }
 
         public Task<TaskResult> Insert(TPrimaryKey key, TEntity entity)
         {
-            if (!TryGetPrimaryKey(entity, out TPrimaryKey entityKey) || !entityKey.Equals(key))
+            var certificate = _locker.Acquire(key);
+            try
             {
-                return Task.FromResult(TaskResult.Uncompleted());
-            }
-            lock (_syncRoot)
-            {
-                try
-                {
-                    if (_databaseContext.Items.Find(entityKey) is null)
-                    {
-                        _databaseContext.Items.Add(entity);
-                        _databaseContext.SaveChangesAsync();
-                        return Task.FromResult(TaskResult.Successful());
-                    }
-                    return Task.FromResult(TaskResult.Unsuccessful());
-                }
-                catch
+                if (!key.Equals(GetPrimaryKey(entity)))
                 {
                     return Task.FromResult(TaskResult.Uncompleted());
                 }
+                if (_databaseContext.Items.Find(key) is null)
+                {
+                    _databaseContext.Items.Add(entity);
+                    _databaseContext.SaveChangesAsync().Wait();
+                    return Task.FromResult(TaskResult.Successful());
+                }
+                return Task.FromResult(TaskResult.Unsuccessful());
+            }
+            catch
+            {
+                return Task.FromResult(TaskResult.Uncompleted());
+            }
+            finally
+            {
+                certificate.ReportRelease();
             }
         }
 
         public Task<TaskResult> Update(TPrimaryKey key, TEntity entity)
         {
-            if (!TryGetPrimaryKey(entity, out TPrimaryKey entityKey) || !entityKey.Equals(key))
+            var certificate = _locker.Acquire(key);
+            try
             {
-                return Task.FromResult(TaskResult.Uncompleted());
-            }
-            lock (_syncRoot)
-            {
-                try
-                {
-                    _databaseContext.Items.Update(entity);
-                    _databaseContext.SaveChangesAsync();
-                    return Task.FromResult(TaskResult.Successful());
-                }
-                catch
+                if (!key.Equals(GetPrimaryKey(entity)))
                 {
                     return Task.FromResult(TaskResult.Uncompleted());
                 }
+                _databaseContext.Items.Update(entity);
+                _databaseContext.SaveChangesAsync().Wait();
+                return Task.FromResult(TaskResult.Successful());
+            }
+            catch
+            {
+                return Task.FromResult(TaskResult.Uncompleted());
+            }
+            finally
+            {
+                certificate.ReportRelease();
             }
         }
 
-        private bool TryGetPrimaryKey(TEntity entity, out TPrimaryKey key)
+        private TPrimaryKey GetPrimaryKey(TEntity entity)
         {
             if (entity is null)
             {
-                key = default;
-                return false;
+                return default;
             }
-            lock (_syncRoot)
+            var entry = _databaseContext.Entry(entity);
+            object[] keys = entry.Metadata.FindPrimaryKey().Properties
+                         .Select(p => entry.Property(p.Name).CurrentValue)
+                         .ToArray();
+            if (keys.Length == 0 || keys[0] is not TPrimaryKey)
             {
-                var entry = _databaseContext.Entry(entity);
-                object[] keys = entry.Metadata.FindPrimaryKey().Properties
-                             .Select(p => entry.Property(p.Name).CurrentValue)
-                             .ToArray();
-                if (keys.Length == 0 || keys[0] is not TPrimaryKey)
-                {
-                    key = default;
-                    return false;
-                }
-                key = (TPrimaryKey)keys[0];
-                return true;
+                return default;
             }
+            return (TPrimaryKey)keys[0];
         }
     }
 }

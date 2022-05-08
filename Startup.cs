@@ -1,8 +1,8 @@
 using System;
+using HRwflow.Models;
 using HRwflow.Models.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -80,10 +80,18 @@ namespace HRwflow
 
             var connectionString = Environment.GetEnvironmentVariable("ConnectionString");
 
-            void optionsAction(DbContextOptionsBuilder options)
-                => options.UseSqlServer(connectionString);
-            services.AddDbContext<AuthDataDbContext>(optionsAction);
-            services.AddDbContext<CustomerDbContext>(optionsAction);
+            services.AddSingleton<IAuthService>(
+                new AuthService(
+                    new DbContextService<string, AuthCertificate>(
+                        new AuthCertificateDbContext(connectionString))));
+
+            services.AddSingleton<IStorageService<string, Customer>>(
+                new DbContextService<string, Customer>(
+                    new CustomerDbContext(connectionString)));
+
+            services.AddSingleton<IStorageService<string, CustomerInfo>>(
+                new DbContextService<string, CustomerInfo>(
+                    new CustomerInfoDbContext(connectionString)));
         }
     }
 }

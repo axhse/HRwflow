@@ -20,17 +20,35 @@
     display: flex;
     flex-basis: 100%;
     align-items: center;
-    color: gray;
-    margin: 8px 0px;
+    color: rgb(80, 80, 80);
+    margin: 1rem 0rem;
 }
 
-.text-hr:before,
-.text-hr:after {
-    content: "";
-    flex-grow: 1;
-    background: darkgray;
-    height: 1px;
-    font-size: 0px;
-    line-height: 0px;
-    margin: 0px 10px;
+    .text-hr:before,
+    .text-hr:after {
+        content: "";
+        flex-grow: 1;
+        background: rgb(200, 200, 200);
+        height: 1px;
+        font-size: 0px;
+        line-height: 0px;
+    }
+
+    .text-hr:before {
+        margin-right: 1.5rem;
+        margin-left: 8rem;
+    }
+
+    .text-hr:after {
+        margin-right: 8rem;
+        margin-left: 1.5rem;
+    }
+
+.team-btn {
+    margin: 0.7rem 1rem;
+    white-space: nowrap;
+}
+
+.create-team-btn {
+    width: 7rem;
 }

@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace HRwflow.Models.Services
+namespace HRwflow.Models
 {
     public interface IAuthService
     {

@@ -1,4 +1,4 @@
-﻿namespace HRwflow.Models.Services
+﻿namespace HRwflow.Models
 {
     public class TaskResult<TValue>
     {

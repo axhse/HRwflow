@@ -1,8 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Text;
 using HRwflow.Models;
-using HRwflow.Models.Data;
-using HRwflow.Models.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,13 +10,16 @@ namespace HRwflow.Controllers
     public class AccountController : AbstractController
     {
         private readonly IAuthService _authService;
-        private readonly IStorageService<string, Customer> _customerService;
+        private readonly IStorageService<string, CustomerInfo> _customerInfo;
+        private readonly IStorageService<string, Customer> _customers;
 
-        public AccountController(AuthDataDbContext authDataDbContext,
-            CustomerDbContext customerDbContext)
+        public AccountController(IAuthService authService,
+            IStorageService<string, Customer> customers,
+            IStorageService<string, CustomerInfo> customerInfo)
         {
-            _authService = new AuthService(new DbContextService<string, AuthData>(authDataDbContext));
-            _customerService = new DbContextService<string, Customer>(customerDbContext);
+            _authService = authService;
+            _customers = customers;
+            _customerInfo = customerInfo;
         }
 
         [RequireHttps]
@@ -25,7 +27,7 @@ namespace HRwflow.Controllers
         public IActionResult Delete()
         {
             string username = HttpContext.Session.GetString("Username");
-            var result = _customerService.Get(username).Result;
+            var result = _customers.Get(username).Result;
             if (!result.IsCompleted)
             {
                 return ShowError(ErrorTypes.OperationFaulted);
@@ -40,7 +42,7 @@ namespace HRwflow.Controllers
             }
             if (Request.Method.ToUpper() == "POST")
             {
-                if (!_customerService.Delete(username).Result.IsSuccessful)
+                if (!_customers.Delete(username).Result.IsSuccessful)
                 {
                     return ShowError(ErrorTypes.OperationFaulted);
                 }
@@ -67,16 +69,18 @@ namespace HRwflow.Controllers
         public override IActionResult Main()
         {
             string username = HttpContext.Session.GetString("Username");
-            var result = _customerService.Get(username).Result;
-            if (!result.IsCompleted)
-            {
-                return ShowError(ErrorTypes.OperationFaulted);
-            }
-            if (!result.IsSuccessful)
+            var result = _customers.Get(username).Result;
+            var infoResult = _customerInfo.Get(username).Result;
+            if (result.IsCompleted && !result.IsSuccessful)
             {
                 return RedirectSignIn();
             }
-            return SelfMain(new CustomerVM { Customer = result.Value });
+            if (!result.IsCompleted || !infoResult.IsSuccessful)
+            {
+                return ShowError(ErrorTypes.OperationFaulted);
+            }
+            return SelfMain(
+                new CustomerVM { Customer = result.Value, CustomerInfo = infoResult.Value });
         }
 
         [HttpGet]
@@ -91,7 +95,7 @@ namespace HRwflow.Controllers
         public IActionResult Settings()
         {
             string username = HttpContext.Session.GetString("Username");
-            var result = _customerService.Get(username).Result;
+            var result = _customers.Get(username).Result;
             if (!result.IsCompleted)
             {
                 return ShowError(ErrorTypes.OperationFaulted);
@@ -108,23 +112,19 @@ namespace HRwflow.Controllers
             }
             if (Request.Method.ToUpper() == "POST")
             {
-                string name = CustomerProperties.FormatName(Request.Form.GetValue("name"));
-                bool updateRequired = false;
-                if (CustomerProperties.NameIsCorrect(name))
+                var properties = customer.Properties;
+                try
                 {
-                    if (name != customer.Properties.Name)
-                    {
-                        customer.Properties.Name = name;
-                        updateRequired = true;
-                    }
+                    properties.Name = Request.Form.GetValue("name");
                 }
-                else
+                catch (ArgumentException)
                 {
                     model.NameIsCorrect = false;
                 }
-                if (updateRequired)
+                if (!properties.Equals(customer.Properties))
                 {
-                    if (!_customerService.Update(username, customer).Result.IsSuccessful)
+                    customer.Properties = properties;
+                    if (!_customers.Update(username, customer).Result.IsSuccessful)
                     {
                         return ShowError(ErrorTypes.OperationFaulted);
                     }
@@ -165,7 +165,7 @@ namespace HRwflow.Controllers
                     Response.Cookies.Delete("Username");
                 }
 
-                var result = _customerService.Get(username).Result;
+                var result = _customers.Get(username).Result;
                 if (!result.IsCompleted)
                 {
                     return ShowError(ErrorTypes.OperationFaulted);
@@ -214,7 +214,7 @@ namespace HRwflow.Controllers
                 model.IsPasswordConfirmationCorrect = password == passwordConfirmation;
                 if (model.IsUsernameCorrect)
                 {
-                    var result = _customerService.Get(username).Result;
+                    var result = _customers.Get(username).Result;
                     if (!result.IsCompleted)
                     {
                         return ShowError(ErrorTypes.OperationFaulted);
@@ -223,27 +223,30 @@ namespace HRwflow.Controllers
                 }
                 if (!model.HasErrors)
                 {
-                    var result = _authService.SignUp(username, password).Result;
+                    var customer = new Customer { Username = username };
+                    var result = _customers.Insert(customer).Result;
                     if (!result.IsCompleted)
                     {
                         return ShowError(ErrorTypes.OperationFaulted);
                     }
-                    if (result.IsSuccessful)
+                    if (!result.IsSuccessful)
                     {
-                        var customer = new Customer { Username = username };
-                        var insertResult = _customerService.Insert(customer).Result;
-                        if (!insertResult.IsCompleted)
+                        model.IsUsernameUnused = false;
+                    }
+                    else
+                    {
+                        var customerInfo = new CustomerInfo { Username = username };
+                        if (!_customerInfo.Insert(customerInfo).Result.IsSuccessful
+                            || !_authService.SignUp(username, password).Result.IsSuccessful)
                         {
+                            _customers.Delete(username);
+                            _customerInfo.Delete(username);
                             return ShowError(ErrorTypes.OperationFaulted);
-                        }
-                        if (insertResult.IsSuccessful)
-                        {
-                            HttpContext.Session.SetString("Username", username);
-                            return RedirectMain(RedirectionModes.Success);
                         }
                         else
                         {
-                            model.IsUsernameUnused = false;
+                            HttpContext.Session.SetString("Username", username);
+                            return RedirectMain(RedirectionModes.Success);
                         }
                     }
                 }

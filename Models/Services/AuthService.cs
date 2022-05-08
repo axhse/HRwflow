@@ -1,20 +1,23 @@
 ﻿using System.Threading.Tasks;
-using HRwflow.Models.Services;
 
 namespace HRwflow.Models
 {
     public class AuthService : IAuthService
     {
-        private readonly IStorageService<string, AuthData> _storageService;
+        private readonly IStorageService<string, AuthCertificate> _certificates;
 
-        public AuthService(IStorageService<string, AuthData> storageService)
+        public AuthService(IStorageService<string, AuthCertificate> storageService)
         {
-            _storageService = storageService;
+            _certificates = storageService;
         }
 
         public async Task<TaskResult> Delete(string username)
         {
-            var result = await _storageService.Delete(username);
+            if (!Customer.UsernameIsCorrect(username))
+            {
+                return await Task.FromResult(TaskResult.Unsuccessful());
+            }
+            var result = await _certificates.Delete(username);
             if (!result.IsCompleted)
             {
                 return await Task.FromResult(TaskResult.Uncompleted());
@@ -24,28 +27,31 @@ namespace HRwflow.Models
 
         public async Task<TaskResult> SignIn(string username, string password)
         {
-            var result = await _storageService.Get(username);
+            if (!Customer.UsernameIsCorrect(username) || !Customer.PasswordIsCorrect(password))
+            {
+                return await Task.FromResult(TaskResult.Unsuccessful());
+            }
+            var result = await _certificates.Get(username);
             if (!result.IsCompleted)
             {
                 return await Task.FromResult(TaskResult.Uncompleted());
             }
             bool isSuccessful = result.IsSuccessful
-                && AuthData.GetPasswordHash(password) == result.Value.PasswordHash;
+                && AuthCertificate.CalculateHash(password) == result.Value.PasswordHash;
             return await Task.FromResult(TaskResult.FromCondition(isSuccessful));
         }
 
         public async Task<TaskResult> SignUp(string username, string password)
         {
-            if (username is null || password is null)
+            if (!Customer.UsernameIsCorrect(username) || !Customer.PasswordIsCorrect(password))
             {
-                return await Task.FromResult(TaskResult.Uncompleted());
+                return await Task.FromResult(TaskResult.Unsuccessful());
             }
-            var authData = new AuthData
+            var result = await _certificates.Insert(new AuthCertificate
             {
                 Username = username,
-                PasswordHash = AuthData.GetPasswordHash(password)
-            };
-            var result = await _storageService.Insert(authData);
+                PasswordHash = AuthCertificate.CalculateHash(password)
+            });
             if (!result.IsCompleted)
             {
                 return await Task.FromResult(TaskResult.Uncompleted());
