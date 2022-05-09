@@ -1,0 +1,23 @@
+﻿@model TeamInfoVM
+@{
+	ViewData["Title"] = "Team";
+}
+
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 mt-3">
+			<p class="text-dark fw-bold">@Model.TeamInfo.Properties.Name</p>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-4" align="center">
+	<p class="text-success">Активных вакансий: @Model.TeamInfo.ActiveVacancyCount</p>
+	<div class="mt-5">
+		<a class="btn btn-primary" href="/workplace/editteam/@Model.TeamInfo.TeamId">Изменить</a>
+		<a class="btn btn-success" href="/workplace/teamvacancies/@Model.TeamInfo.TeamId">Вакансии</a>
+	</div>
+	<div class="mt-4">
+		<a class="link-secondary" href="/account">Назад</a>
+	</div>
+</div>

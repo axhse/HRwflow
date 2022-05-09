@@ -13,9 +13,9 @@ namespace HRwflow.Models.Data
             builder.Property(info => info.Username).IsRequired();
             builder.Property(info => info.Username).ValueGeneratedOnAdd();
             builder.Property(info => info.Username).HasMaxLength(20);
-            builder.Property(info => info.TeamInfos).IsRequired();
-            builder.Property(info => info.TeamInfos)
-                   .HasConversion(new JsonConverter<HashSet<TeamInfo>>());
+            builder.Property(info => info.JoinedTeamNames).IsRequired();
+            builder.Property(info => info.JoinedTeamNames)
+                   .HasConversion(new JsonConverter<Dictionary<int, string>>());
             builder.ToTable(nameof(CustomerInfo));
         }
     }

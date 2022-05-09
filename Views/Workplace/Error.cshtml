@@ -1,0 +1,24 @@
+﻿@model WorkplaceErrorVM
+@{
+	ViewData["Title"] = "Error";
+	TempData["Error-text"] = Model.Error switch
+	{
+		WorkplaceErrors.ResourceNotFound => "Ресурс не найден.",
+		WorkplaceErrors.JoinLimitExceeded => "Пользователь может состоять" +
+			$" не более чем в {WorkplaceLimits.TeamJoinLimit} группах.",
+		WorkplaceErrors.TeamSizeLimitExceeded => "В группе может быть" +
+			$" не более чем {WorkplaceLimits.TeamJoinLimit} участников.",
+		WorkplaceErrors.VacancyCountLimitExceeded => "В группе могут существовать" +
+			$" не более чем {WorkplaceLimits.VacanciesMaxCount} вакансий.",
+		_ => null
+	};
+}
+
+<div class="container" align="center">
+	<h4 class="text-info fw-bold mt-5">Ошибка.</h4>
+
+	@if (TempData["Error-text"] is not null)
+	{
+		<p class="text-dark fw-bold mt-4">@TempData["Error-text"]</p>
+	}
+</div>

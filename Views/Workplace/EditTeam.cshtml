@@ -1,0 +1,33 @@
+﻿@model EditTeamPropertiesVM
+@{
+	ViewData["Title"] = "Edit Team";
+}
+
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 mt-3">
+			<p class="text-dark fw-bold">Редактирование группы</p>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-4" align="center">
+	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
+		<form method="POST">
+			<div class="form-floating">
+				<input class="form-control" id="nameInput" name="name" placeholder="Название" value="@Model.TeamProperties.Name">
+				<label for="nameInput">Название</label>
+				@if (!Model.NameIsCorrect)
+				{
+					<p class="text-info">Название должно иметь длину от 2 до 40 символов.</p>
+				}
+			</div>
+			<div class="mt-5">
+				<button type="submit" class="btn btn-success">Сохранить</button>
+			</div>
+		</form>
+	</div>
+	<div class="mt-4">
+		<a class="link-secondary" href="/account">Вернуться на главную страницу</a>
+	</div>
+</div>

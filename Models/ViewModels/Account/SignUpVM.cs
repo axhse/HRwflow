@@ -2,7 +2,13 @@ namespace HRwflow.Models
 {
     public class SignUpVM
     {
-        public string DefaultUsername { get; set; } = string.Empty;
+        private string _defaultUsername;
+
+        public string DefaultUsername
+        {
+            get => _defaultUsername is null ? string.Empty : _defaultUsername;
+            set => _defaultUsername = value;
+        }
 
         public bool HasErrors => !IsUsernameCorrect || !IsPasswordCorrect
                 || !IsPasswordConfirmationCorrect || !IsUsernameUnused;

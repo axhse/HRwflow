@@ -16,7 +16,7 @@ namespace HRwflow.Models
         {
             if (name is not null)
             {
-                name = name.Trim(' ').ToLower();
+                name = name.Trim();
             }
             foreach (var symb in " ")
             {
@@ -29,7 +29,7 @@ namespace HRwflow.Models
         }
 
         public static bool NameIsCorrect(string name)
-            => name is null || name.Length <= 40;
+            => name is not null && 2 <= name.Length && name.Length <= 40;
 
         public bool TrySetName(string name)
         {

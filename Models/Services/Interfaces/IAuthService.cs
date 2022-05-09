@@ -1,13 +1,15 @@
-﻿using System.Threading.Tasks;
-
-namespace HRwflow.Models
+﻿namespace HRwflow.Models
 {
     public interface IAuthService
     {
-        Task<TaskResult> Delete(string username);
+        TaskResult DeleteAccount(string username);
 
-        Task<TaskResult> SignIn(string username, string password);
+        TaskResult<bool> IsUserExists(string username);
 
-        Task<TaskResult> SignUp(string username, string password);
+        TaskResult<bool> SignIn(string username, string password);
+
+        TaskResult SignUp(string username, string password);
+
+        TaskResult UpdatePassword(string username, string password);
     }
 }

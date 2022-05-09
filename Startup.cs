@@ -80,18 +80,24 @@ namespace HRwflow
 
             var connectionString = Environment.GetEnvironmentVariable("ConnectionString");
 
+            var customerInfoService = new DbContextService<string, CustomerInfo>(
+                    new CustomerInfoDbContext(connectionString));
+            var teamService = new DbContextService<int, Team>(
+                    new TeamDbContext(connectionString));
+
             services.AddSingleton<IAuthService>(
                 new AuthService(
                     new DbContextService<string, AuthCertificate>(
                         new AuthCertificateDbContext(connectionString))));
 
-            services.AddSingleton<IStorageService<string, Customer>>(
-                new DbContextService<string, Customer>(
+            services.AddSingleton<IStorageService<string, Customer>>(new DbContextService<string, Customer>(
                     new CustomerDbContext(connectionString)));
 
             services.AddSingleton<IStorageService<string, CustomerInfo>>(
-                new DbContextService<string, CustomerInfo>(
-                    new CustomerInfoDbContext(connectionString)));
+                customerInfoService);
+            services.AddSingleton<IStorageService<int, Team>>(teamService);
+
+            services.AddSingleton(new WorkplaceService(customerInfoService, teamService));
         }
     }
 }

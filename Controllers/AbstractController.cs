@@ -19,11 +19,11 @@ namespace HRwflow.Controllers
 
     public abstract class AbstractController : Controller
     {
+        public static readonly string ControllerErrorPageName = "ControllerError";
         public static readonly string MainActionName = nameof(Main);
         public static readonly string MainPageName = "Main";
+        public static readonly string RedirectionPageName = "Redirection";
         public static readonly string RedirectMainActionName = nameof(RedirectMain);
-        public static readonly string SharedErrorPageName = "SharedError";
-        public static readonly string SharedRedirectionPageName = "SharedRedirection";
 
         public abstract IActionResult Main();
 
@@ -33,7 +33,7 @@ namespace HRwflow.Controllers
             RedirectionModes redirectionMode = RedirectionModes.Default)
         {
             Response.Redirect(path, permanent: true);
-            return View(SharedRedirectionPageName, new RedirectionVM(redirectionMode));
+            return View(RedirectionPageName, new RedirectionVM(redirectionMode));
         }
 
         protected IActionResult SelfMain(object model = null)
@@ -41,9 +41,9 @@ namespace HRwflow.Controllers
             return model == null ? View(MainPageName) : View(MainPageName, model);
         }
 
-        protected IActionResult ShowError(ErrorTypes errorType = ErrorTypes.Unknown)
+        protected IActionResult ShowError(ControllerErrors error = ControllerErrors.Unknown)
         {
-            return View(SharedErrorPageName, new ErrorVM(errorType));
+            return View(ControllerErrorPageName, new ControllerErrorVM(error));
         }
     }
 }

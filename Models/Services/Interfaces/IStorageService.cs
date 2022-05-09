@@ -1,17 +1,17 @@
-﻿using System.Threading.Tasks;
-
-namespace HRwflow.Models
+﻿namespace HRwflow.Models
 {
     public interface IStorageService<Tkey, TValue>
     {
-        Task<TaskResult> Delete(Tkey key);
+        TaskResult Delete(Tkey key);
 
-        Task<TaskResult<TValue>> Get(Tkey key);
+        TaskResult<TValue> Get(Tkey key);
 
-        Task<TaskResult> Insert(Tkey key, TValue value);
+        TaskResult<bool> HasKey(Tkey key);
 
-        Task<TaskResult<Tkey>> Insert(TValue value);
+        TaskResult Insert(Tkey key, TValue value);
 
-        Task<TaskResult> Update(Tkey key, TValue value);
+        TaskResult<Tkey> Insert(TValue value);
+
+        TaskResult Update(Tkey key, TValue value);
     }
 }

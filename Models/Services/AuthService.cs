@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace HRwflow.Models
+﻿namespace HRwflow.Models
 {
     public class AuthService : IAuthService
     {
@@ -11,52 +9,63 @@ namespace HRwflow.Models
             _certificates = storageService;
         }
 
-        public async Task<TaskResult> Delete(string username)
+        public TaskResult DeleteAccount(string username)
         {
-            if (!Customer.UsernameIsCorrect(username))
-            {
-                return await Task.FromResult(TaskResult.Unsuccessful());
-            }
-            var result = await _certificates.Delete(username);
-            if (!result.IsCompleted)
-            {
-                return await Task.FromResult(TaskResult.Uncompleted());
-            }
-            return await Task.FromResult(TaskResult.FromCondition(result.IsSuccessful));
+            return _certificates.Delete(username);
         }
 
-        public async Task<TaskResult> SignIn(string username, string password)
+        public TaskResult<bool> IsUserExists(string username)
         {
-            if (!Customer.UsernameIsCorrect(username) || !Customer.PasswordIsCorrect(password))
-            {
-                return await Task.FromResult(TaskResult.Unsuccessful());
-            }
-            var result = await _certificates.Get(username);
-            if (!result.IsCompleted)
-            {
-                return await Task.FromResult(TaskResult.Uncompleted());
-            }
-            bool isSuccessful = result.IsSuccessful
-                && AuthCertificate.CalculateHash(password) == result.Value.PasswordHash;
-            return await Task.FromResult(TaskResult.FromCondition(isSuccessful));
+            return _certificates.HasKey(username);
         }
 
-        public async Task<TaskResult> SignUp(string username, string password)
+        public TaskResult<bool> SignIn(string username, string password)
         {
-            if (!Customer.UsernameIsCorrect(username) || !Customer.PasswordIsCorrect(password))
+            if (!Customer.PasswordIsCorrect(password))
             {
-                return await Task.FromResult(TaskResult.Unsuccessful());
+                return TaskResult<bool>.Uncompleted();
             }
-            var result = await _certificates.Insert(new AuthCertificate
+            var result = _certificates.Get(username);
+            if (!result.IsCompleted)
+            {
+                return TaskResult<bool>.Uncompleted();
+            }
+            return TaskResult<bool>.FromValue(
+                AuthCertificate.CalculateHash(password) == result.Value.PasswordHash);
+        }
+
+        public TaskResult SignUp(string username, string password)
+        {
+            if (!Customer.UsernameIsCorrect(username)
+                || !Customer.PasswordIsCorrect(password))
+            {
+                return TaskResult.Uncompleted();
+            }
+            var certificate = new AuthCertificate
             {
                 Username = username,
                 PasswordHash = AuthCertificate.CalculateHash(password)
-            });
+            };
+            return _certificates.Insert(username, certificate);
+        }
+
+        public TaskResult UpdatePassword(string username, string password)
+        {
+            if (!Customer.PasswordIsCorrect(password))
+            {
+                return TaskResult.Uncompleted();
+            }
+            var result = _certificates.Get(username);
             if (!result.IsCompleted)
             {
-                return await Task.FromResult(TaskResult.Uncompleted());
+                return TaskResult.Uncompleted();
             }
-            return await Task.FromResult(TaskResult.FromCondition(result.IsSuccessful));
+            var certificate = new AuthCertificate
+            {
+                Username = username,
+                PasswordHash = AuthCertificate.CalculateHash(password)
+            };
+            return _certificates.Update(username, certificate);
         }
     }
 }

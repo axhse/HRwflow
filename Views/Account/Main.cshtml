@@ -5,7 +5,7 @@
 
 <div class="navbar custom-navbar border-bottom">
     <div class="container" align="center">
-        <div class="col-4 col-sm-3 col-xl-2" align="center">
+        <div class="col-4 col-sm-3 col-xl-2">
             <div class="btn-group">
                 <button type="button" class="btn btn-secondary dropdown-toggle fw-bold" data-bs-toggle="dropdown" aria-expanded="false">
                     ☰
@@ -24,16 +24,14 @@
 </div>
 
 <div class="container" align="center">
-        <p class="text-hr mt-5">Все команды</p>
+        <p class="text-hr mt-5">Все группы</p>
     <div class="mt-4" align="center">
-        @foreach (var teamInfo in Model.CustomerInfo.TeamInfos)
+        @foreach (var keyPair in Model.CustomerInfo.JoinedTeamNames)
         {
 	        <a class="btn btn-light btn-lg list-group-item-primary team-btn"
-                href="/workplace/team/@teamInfo.TeamId">@teamInfo.Properties.Name</a>
+                href="/workplace/team/@keyPair.Key">@keyPair.Value</a>
         }
 	    <a class="btn btn-light btn-lg list-group-item-success team-btn fw-bold
             create-team-btn" href="/workplace/createteam">+</a>
     </div>
 </div>
-
-

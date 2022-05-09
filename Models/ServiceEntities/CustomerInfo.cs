@@ -6,7 +6,7 @@ namespace HRwflow.Models
     {
         private string _username;
 
-        public HashSet<TeamInfo> TeamInfos { get; set; } = new();
+        public Dictionary<int, string> JoinedTeamNames { get; set; } = new();
 
         public string Username
         {

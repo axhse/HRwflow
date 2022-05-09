@@ -18,7 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Views\Workplace\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
