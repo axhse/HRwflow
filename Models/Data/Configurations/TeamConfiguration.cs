@@ -19,9 +19,6 @@ namespace HRwflow.Models.Data
             builder.Property(team => team.Permissions).IsRequired();
             builder.Property(team => team.Permissions)
                    .HasConversion(new JsonConverter<Dictionary<string, TeamPermissions>>());
-            builder.Property(team => team.Vacancies).IsRequired();
-            builder.Property(team => team.Vacancies)
-                   .HasConversion(new JsonConverter<Dictionary<int, Vacancy>>());
             builder.ToTable(nameof(Team));
         }
     }

@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using HRwflow.Models.Data;
 
@@ -17,7 +19,11 @@ namespace HRwflow.Models
 
         public TaskResult Delete(TPrimaryKey key)
         {
-            var certificate = _locker.Acquire(key);
+            if (key is null)
+            {
+                return TaskResult.Uncompleted();
+            }
+            using var _ = _locker.Acquire(key);
             try
             {
                 var entity = _databaseContext.Items.Find(key);
@@ -33,15 +39,15 @@ namespace HRwflow.Models
             {
                 return TaskResult.Uncompleted();
             }
-            finally
-            {
-                certificate.ReportRelease();
-            }
         }
 
         public TaskResult<TEntity> Get(TPrimaryKey key)
         {
-            var certificate = _locker.Acquire(key);
+            if (key is null)
+            {
+                return TaskResult<TEntity>.Uncompleted();
+            }
+            // using var _ = _locker.Acquire(key);
             try
             {
                 var entity = _databaseContext.Items.Find(key);
@@ -49,40 +55,40 @@ namespace HRwflow.Models
                 {
                     return TaskResult<TEntity>.Uncompleted();
                 }
-                return TaskResult<TEntity>.FromValue(entity);
+                return TaskResult.FromValue(entity);
             }
             catch
             {
                 return TaskResult<TEntity>.Uncompleted();
             }
-            finally
-            {
-                certificate.ReportRelease();
-            }
         }
 
         public TaskResult<bool> HasKey(TPrimaryKey key)
         {
-            var certificate = _locker.Acquire(key);
+            if (key is null)
+            {
+                return TaskResult<bool>.Uncompleted();
+            }
+            using var _ = _locker.Acquire(key);
             try
             {
-                return TaskResult<bool>.FromValue(
+                return TaskResult.FromValue(
                     _databaseContext.Items.Find(key) is not null);
             }
             catch
             {
                 return TaskResult<bool>.Uncompleted();
             }
-            finally
-            {
-                certificate.ReportRelease();
-            }
         }
 
         public TaskResult<TPrimaryKey> Insert(TEntity entity)
         {
+            if (entity is null)
+            {
+                return TaskResult<TPrimaryKey>.Uncompleted();
+            }
             var key = GetPrimaryKey(entity);
-            var certificate = _locker.Acquire(key);
+            using var _ = _locker.Acquire(key);
             try
             {
                 if (_databaseContext.Items.Find(key) is not null)
@@ -92,21 +98,21 @@ namespace HRwflow.Models
                 var entry = _databaseContext.Items.Add(entity);
                 _databaseContext.SaveChangesAsync().Wait();
                 var generatedKey = GetPrimaryKey(entry.Entity);
-                return TaskResult<TPrimaryKey>.FromValue(generatedKey);
+                return TaskResult.FromValue(generatedKey);
             }
             catch
             {
                 return TaskResult<TPrimaryKey>.Uncompleted();
             }
-            finally
-            {
-                certificate.ReportRelease();
-            }
         }
 
         public TaskResult Insert(TPrimaryKey key, TEntity entity)
         {
-            var certificate = _locker.Acquire(key);
+            if (key is null || entity is null)
+            {
+                return TaskResult.Uncompleted();
+            }
+            using var _ = _locker.Acquire(key);
             try
             {
                 if (key.Equals(GetPrimaryKey(entity))
@@ -122,15 +128,34 @@ namespace HRwflow.Models
             {
                 return TaskResult.Uncompleted();
             }
-            finally
+        }
+
+        public TaskResult<IEnumerable<TEntity>> Select(Func<TEntity, bool> selector)
+        {
+            if (selector is null)
             {
-                certificate.ReportRelease();
+                return TaskResult<IEnumerable<TEntity>>.Uncompleted();
+            }
+            try
+            {
+                return TaskResult.FromValue(
+                       (from item in _databaseContext.Items
+                        where selector(item)
+                        select item).AsEnumerable());
+            }
+            catch
+            {
+                return TaskResult<IEnumerable<TEntity>>.Uncompleted();
             }
         }
 
         public TaskResult Update(TPrimaryKey key, TEntity entity)
         {
-            var certificate = _locker.Acquire(key);
+            if (key is null || entity is null)
+            {
+                return TaskResult.Uncompleted();
+            }
+            using var _ = _locker.Acquire(key);
             try
             {
                 if (!key.Equals(GetPrimaryKey(entity)))
@@ -144,10 +169,6 @@ namespace HRwflow.Models
             catch
             {
                 return TaskResult.Uncompleted();
-            }
-            finally
-            {
-                certificate.ReportRelease();
             }
         }
 

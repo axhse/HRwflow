@@ -1,0 +1,15 @@
+﻿@model IdVM<int>
+@{
+	ViewData["Title"] = "Leave Team";
+}
+
+<p class="text-dark text-center mt-5 fw-bold">Выйти из группы?</p>
+
+<div class="container mt-4" align="center">
+	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
+		<form method="POST">
+			<button type="submit" class="btn btn-danger" name="delete">Да, выйти</button>
+			<a href="/workplace/team/@Model.Id" class="btn btn-success">Нет, вернуться</a>
+		</form>
+	</div>
+</div>

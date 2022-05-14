@@ -1,7 +1,7 @@
 ﻿@model ControllerErrorVM
 @{
     ViewData["Title"] = "Error";
-	TempData["Error-text"] = Model.Error switch
+	var errorText = Model.Error switch
 	{
 		ControllerErrors.OperationFaulted => "Выполняемая операция была прервана по ошибке сервера.",
 		ControllerErrors.RequestUnsupported => "Запросы данного типа не поддерживаются.",
@@ -10,10 +10,13 @@
 }
 
 <div class="container" align="center">
-	<h4 class="text-info fw-bold mt-5">В процессе обработки запроса произошла ошибка.</h4>
-
-	@if (TempData["Error-text"] is not null)
+	<div class="mt-5">
+		<h4 class="text-info fw-bold">В процессе обработки запроса произошла ошибка.</h4>
+	</div>
+	@if (errorText is not null)
 	{
-		<p class="text-dark fw-bold mt-4">@TempData["Error-text"]</p>
+		<div class="mt-4">
+			<p class="text-dark fw-bold">@errorText</p>
+		</div>
 	}
 </div>

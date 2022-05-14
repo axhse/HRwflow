@@ -2,36 +2,41 @@
 {
     public class AuthService : IAuthService
     {
-        private readonly IStorageService<string, AuthCertificate> _certificates;
+        private readonly IStorageService<string, AuthInfo> _authInfos;
 
-        public AuthService(IStorageService<string, AuthCertificate> storageService)
+        public AuthService(IStorageService<string, AuthInfo> authInfos)
         {
-            _certificates = storageService;
+            _authInfos = authInfos;
         }
 
         public TaskResult DeleteAccount(string username)
         {
-            return _certificates.Delete(username);
+            return _authInfos.Delete(username);
         }
 
         public TaskResult<bool> IsUserExists(string username)
         {
-            return _certificates.HasKey(username);
+            if (username is null)
+            {
+                return TaskResult<bool>.Uncompleted();
+            }
+            return _authInfos.HasKey(username);
         }
 
         public TaskResult<bool> SignIn(string username, string password)
         {
-            if (!Customer.PasswordIsCorrect(password))
+            if (!Customer.UsernameIsCorrect(username)
+                || !Customer.PasswordIsCorrect(password))
             {
                 return TaskResult<bool>.Uncompleted();
             }
-            var result = _certificates.Get(username);
+            var result = _authInfos.Get(username);
             if (!result.IsCompleted)
             {
                 return TaskResult<bool>.Uncompleted();
             }
-            return TaskResult<bool>.FromValue(
-                AuthCertificate.CalculateHash(password) == result.Value.PasswordHash);
+            return TaskResult.FromValue(
+                AuthInfo.CalculateHash(password) == result.Value.PasswordHash);
         }
 
         public TaskResult SignUp(string username, string password)
@@ -41,31 +46,32 @@
             {
                 return TaskResult.Uncompleted();
             }
-            var certificate = new AuthCertificate
+            var info = new AuthInfo
             {
                 Username = username,
-                PasswordHash = AuthCertificate.CalculateHash(password)
+                PasswordHash = AuthInfo.CalculateHash(password)
             };
-            return _certificates.Insert(username, certificate);
+            return _authInfos.Insert(username, info);
         }
 
         public TaskResult UpdatePassword(string username, string password)
         {
-            if (!Customer.PasswordIsCorrect(password))
+            if (!Customer.UsernameIsCorrect(username)
+                || !Customer.PasswordIsCorrect(password))
             {
                 return TaskResult.Uncompleted();
             }
-            var result = _certificates.Get(username);
+            var result = _authInfos.Get(username);
             if (!result.IsCompleted)
             {
                 return TaskResult.Uncompleted();
             }
-            var certificate = new AuthCertificate
+            var certificate = new AuthInfo
             {
                 Username = username,
-                PasswordHash = AuthCertificate.CalculateHash(password)
+                PasswordHash = AuthInfo.CalculateHash(password)
             };
-            return _certificates.Update(username, certificate);
+            return _authInfos.Update(username, certificate);
         }
     }
 }

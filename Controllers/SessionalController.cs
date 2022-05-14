@@ -22,7 +22,7 @@ namespace HRwflow.Controllers
         protected string Username => Customer.Username;
 
         protected bool TryIdentifyCustomer(
-            out IActionResult errorActionResult, bool loadInfo = true)
+            out IActionResult errorActionResult, bool loadInfo = false)
         {
             string username = HttpContext.Session.GetString("Username");
             if (username is null)

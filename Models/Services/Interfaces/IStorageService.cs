@@ -1,4 +1,7 @@
-﻿namespace HRwflow.Models
+﻿using System;
+using System.Collections.Generic;
+
+namespace HRwflow.Models
 {
     public interface IStorageService<Tkey, TValue>
     {
@@ -11,6 +14,8 @@
         TaskResult Insert(Tkey key, TValue value);
 
         TaskResult<Tkey> Insert(TValue value);
+
+        TaskResult<IEnumerable<TValue>> Select(Func<TValue, bool> selector);
 
         TaskResult Update(Tkey key, TValue value);
     }

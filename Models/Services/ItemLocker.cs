@@ -4,18 +4,23 @@ using System.Threading;
 
 namespace HRwflow.Models
 {
-    public class AcquireCertificate<T>
+    public sealed class AcquireCertificate<T> : IDisposable
     {
-        private readonly bool _isReleased;
         private readonly T _item;
         private readonly Action<T> _releaseAction;
         private readonly object _syncRoot = new();
+        private bool _isReleased;
 
         public AcquireCertificate(T item, Action<T> releaseAction)
         {
             _item = item;
             _releaseAction = releaseAction;
             _isReleased = false;
+        }
+
+        public void Dispose()
+        {
+            ReportRelease();
         }
 
         public void ReportRelease()
@@ -25,6 +30,7 @@ namespace HRwflow.Models
                 if (!_isReleased)
                 {
                     _releaseAction(_item);
+                    _isReleased = true;
                 }
             }
         }
@@ -36,11 +42,13 @@ namespace HRwflow.Models
         private readonly object _syncRoot = new();
         private readonly Dictionary<T, int> _waitersCounts = new();
 
+        public AcquireCertificate<T> Blank => new(default, (item) => { });
+
         public AcquireCertificate<T> Acquire(T item)
         {
             if (item is null)
             {
-                return new(default, (item) => { });
+                return Blank;
             }
             Mutex mutex;
             lock (_syncRoot)

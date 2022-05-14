@@ -87,8 +87,8 @@ namespace HRwflow
 
             services.AddSingleton<IAuthService>(
                 new AuthService(
-                    new DbContextService<string, AuthCertificate>(
-                        new AuthCertificateDbContext(connectionString))));
+                    new DbContextService<string, AuthInfo>(
+                        new AuthInfoDbContext(connectionString))));
 
             services.AddSingleton<IStorageService<string, Customer>>(new DbContextService<string, Customer>(
                     new CustomerDbContext(connectionString)));

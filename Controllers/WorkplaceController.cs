@@ -20,7 +20,7 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult CreateTeam()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: false))
+            if (!TryIdentifyCustomer(out var errorActionResult))
             {
                 return errorActionResult;
             }
@@ -44,7 +44,7 @@ namespace HRwflow.Controllers
                 {
                     return ShowError(createResult.Error);
                 }
-                return RedirectAndInform($"/workplace/editteam/{createResult.Value}",
+                return RedirectAndInform($"/workplace/team/{createResult.Value}",
                     RedirectionModes.Success);
             }
             return ShowError(ControllerErrors.RequestUnsupported);
@@ -54,17 +54,20 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult EditTeam(int id)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: false))
+            if (!TryIdentifyCustomer(out var errorActionResult))
             {
                 return errorActionResult;
             }
-            var infoResult = _workplaceService.GetTeamInfo(Username, id);
-            if (infoResult.HasError)
+            var teamResult = _workplaceService.GetTeam(Username, id);
+            if (teamResult.HasError)
             {
-                return ShowError(infoResult.Error);
+                return ShowError(teamResult.Error);
             }
-            var info = infoResult.Value;
-            var model = new EditTeamPropertiesVM { TeamProperties = info.Properties };
+            var model = new EditTeamPropertiesVM
+            {
+                TeamId = id,
+                TeamProperties = teamResult.Value.Properties,
+            };
             if (Request.Method.ToUpper() == "GET")
             {
                 return View(model);
@@ -91,12 +94,91 @@ namespace HRwflow.Controllers
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Invite(int id)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var model = new IdVM<int>(id);
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                string username = Request.Form.GetValue("username");
+                var inviteResult = _workplaceService.Invite(Username, id, username);
+                if (inviteResult.HasError)
+                {
+                    return ShowError(inviteResult.Error);
+                }
+                return RedirectAndInform($"/workplace/team/{id}",
+                    RedirectionModes.Success);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Kick(int id)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var model = new IdVM<int>(id);
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                string username = Request.Form.GetValue("username");
+                var inviteResult = _workplaceService.Kick(Username, id, username);
+                if (inviteResult.HasError)
+                {
+                    return ShowError(inviteResult.Error);
+                }
+                return RedirectAndInform($"/workplace/team/{id}",
+                    RedirectionModes.Success);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult LeaveTeam(int id)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var model = new IdVM<int>(id);
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                var leaveResult = _workplaceService.Leave(Username, id);
+                if (leaveResult.HasError)
+                {
+                    return ShowError(leaveResult.Error);
+                }
+                return RedirectAndInform("/account", RedirectionModes.Success);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [HttpGet]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult Main()
         {
             return RedirectAndInform("/account");
         }
 
-        [RequireHttps]
+        [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult RedirectMain()
         {
@@ -108,16 +190,16 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Team(int id)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: false))
+            if (!TryIdentifyCustomer(out var errorActionResult))
             {
                 return errorActionResult;
             }
-            var result = _workplaceService.GetTeamInfo(Username, id);
-            if (result.HasError)
+            var teamResult = _workplaceService.GetTeam(Username, id);
+            if (teamResult.HasError)
             {
-                return ShowError(result.Error);
+                return ShowError(teamResult.Error);
             }
-            return View(new TeamInfoVM { TeamInfo = result.Value });
+            return View(new TeamVM { Team = teamResult.Value });
         }
 
         [HttpGet]
@@ -125,7 +207,7 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult TeamVacancies(int id)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: false))
+            if (!TryIdentifyCustomer(out var errorActionResult))
             {
                 return errorActionResult;
             }

@@ -4,13 +4,15 @@ namespace HRwflow.Models
     {
         None,
         ServerError,
+
+        NoPermission,
         ResourceNotFound,
+        UserNotFound,
+        UserAlreadyJoined,
 
         JoinLimitExceeded,
         TeamSizeLimitExceeded,
-        VacancyCountLimitExceeded,
-
-        NoPermission
+        VacancyCountLimitExceeded
     }
 
     public class WorkplaceErrorVM

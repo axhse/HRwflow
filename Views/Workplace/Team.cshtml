@@ -1,23 +1,46 @@
-﻿@model TeamInfoVM
+﻿@model TeamVM
 @{
 	ViewData["Title"] = "Team";
+	List<(int importanceIndex, string username)> memberInfos = new();
+	foreach	(var (username, permissions) in Model.Team.Permissions)
+	{
+		int importanceIndex = permissions.HasFlag(HRwflow.Models.TeamPermissions.Direct)
+		? 0 : (permissions.HasFlag(HRwflow.Models.TeamPermissions.Manage) ? 1 : 2);
+		memberInfos.Add((importanceIndex, username));
+	}
+	memberInfos.Sort();
 }
 
 <div class="navbar custom-navbar border-bottom">
 	<div class="container" align="center">
 		<div class="col-12 mt-3">
-			<p class="text-dark fw-bold">@Model.TeamInfo.Properties.Name</p>
+			<p class="text-dark fw-bold">@Model.Team.Properties.Name</p>
 		</div>
 	</div>
 </div>
 
-<div class="container mt-4" align="center">
-	<p class="text-success">Активных вакансий: @Model.TeamInfo.ActiveVacancyCount</p>
+<div class="container" align="center">
 	<div class="mt-5">
-		<a class="btn btn-primary" href="/workplace/editteam/@Model.TeamInfo.TeamId">Изменить</a>
-		<a class="btn btn-success" href="/workplace/teamvacancies/@Model.TeamInfo.TeamId">Вакансии</a>
+		<p class="text-secondary">Участники:</p>
 	</div>
-	<div class="mt-4">
-		<a class="link-secondary" href="/account">Назад</a>
+    <div class="mt-4">
+		@foreach(var item in memberInfos)
+		{
+			var colorNames = new List<string> { "primary", "success", "dark" };
+			var textClass = $"link-{colorNames[item.importanceIndex]}";
+			<a class="@textClass username-link">@item.username</a>
+		}
+	</div>
+	<div class="mt-5">
+		<a class="btn btn-success" href="/workplace/invite/@Model.Team.TeamId">Добавить участника</a>
+		<a class="btn btn-secondary" href="/workplace/kick/@Model.Team.TeamId">Удалить участника</a>
+		<a class="btn btn-secondary" href="/workplace/leaveteam/@Model.Team.TeamId">Выйти из группы</a>
+	</div>
+	<div class="mt-3">
+		<a class="btn btn-success" href="/workplace/editteam/@Model.Team.TeamId">Редактировать группу</a>
+		<a class="btn btn-primary" href="/workplace/teamvacancies/@Model.Team.TeamId">Открыть вакансии</a>
+	</div>
+	<div class="mt-5">
+		<a class="link-secondary" href="/account">Вернуться на главную страницу</a>
 	</div>
 </div>

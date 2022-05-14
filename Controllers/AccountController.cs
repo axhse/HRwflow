@@ -10,21 +10,25 @@ namespace HRwflow.Controllers
         private readonly IAuthService _authService;
         private readonly IStorageService<string, CustomerInfo> _customerInfos;
         private readonly IStorageService<string, Customer> _customers;
+        private readonly WorkplaceService _workplaceService;
 
         public AccountController(IAuthService authService,
             IStorageService<string, CustomerInfo> customerInfos,
-            IStorageService<string, Customer> customers) : base(customerInfos, customers)
+            IStorageService<string, Customer> customers,
+            WorkplaceService workplaceService)
+            : base(customerInfos, customers)
         {
             _authService = authService;
             _customerInfos = customerInfos;
             _customers = customers;
+            _workplaceService = workplaceService;
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Delete()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: false))
+            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: true))
             {
                 return errorActionResult;
             }
@@ -35,9 +39,26 @@ namespace HRwflow.Controllers
             if (Request.Method.ToUpper() == "POST")
             {
                 HttpContext.Session.Clear();
-                if (!_authService.DeleteAccount(Username).IsCompleted
+                CustomerInfo.AccountState = AccountStates.OnDeletion;
+                if (!_customerInfos.Update(Username, CustomerInfo).IsCompleted)
+                {
+                    return ShowError(ControllerErrors.OperationFaulted);
+                }
+                var infoResult = _customerInfos.Get(Username);
+                if (!infoResult.IsCompleted)
+                {
+                    return ShowError(ControllerErrors.OperationFaulted);
+                }
+                foreach (var teamId in infoResult.Value.JoinedTeamNames.Keys)
+                {
+                    if (_workplaceService.Leave(Username, teamId).HasError)
+                    {
+                        return ShowError(ControllerErrors.OperationFaulted);
+                    }
+                }
+                if (!_customerInfos.Delete(Username).IsCompleted
                     || !_customers.Delete(Username).IsCompleted
-                    || !_customerInfos.Delete(Username).IsCompleted)
+                    || !_authService.DeleteAccount(Username).IsCompleted)
                 {
                     return ShowError(ControllerErrors.OperationFaulted);
                 }
@@ -58,7 +79,7 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult Main()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
+            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: true))
             {
                 return errorActionResult;
             }
@@ -77,7 +98,7 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Settings()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: false))
+            if (!TryIdentifyCustomer(out var errorActionResult))
             {
                 return errorActionResult;
             }
@@ -107,7 +128,7 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult SignIn()
         {
-            if (Customer is not null)
+            if (HttpContext.Session.TryGetValue("Username", out var _))
             {
                 return RedirectMain(RedirectionModes.Success);
             }
@@ -169,9 +190,9 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult SignUp()
         {
-            if (Customer is not null)
+            if (HttpContext.Session.TryGetValue("Username", out var _))
             {
-                return RedirectMain(RedirectionModes.Default);
+                return RedirectMain(RedirectionModes.Success);
             }
             var model = new SignUpVM();
             if (Request.Method.ToUpper() == "GET")
@@ -190,20 +211,20 @@ namespace HRwflow.Controllers
                 model.IsPasswordConfirmationCorrect = password == passwordConfirmation;
                 if (model.IsUsernameCorrect)
                 {
-                    var result = _authService.IsUserExists(username);
-                    if (!result.IsCompleted)
+                    var existsResult = _authService.IsUserExists(username);
+                    if (!existsResult.IsCompleted)
                     {
                         return ShowError(ControllerErrors.OperationFaulted);
                     }
-                    model.IsUsernameUnused = !result.Value;
+                    model.IsUsernameUnused = !existsResult.Value;
                 }
                 if (!model.HasErrors)
                 {
                     var customer = new Customer { Username = username };
                     var customerInfo = new CustomerInfo { Username = username };
-                    if (_customers.Insert(username, customer).IsCompleted
-                        && _customerInfos.Insert(username, customerInfo).IsCompleted
-                        && _authService.SignUp(username, password).IsCompleted)
+                    if (_authService.SignUp(username, password).IsCompleted
+                        && _customers.Insert(username, customer).IsCompleted
+                        && _customerInfos.Insert(username, customerInfo).IsCompleted)
                     {
                         HttpContext.Session.SetString("Username", username);
                         return RedirectMain(RedirectionModes.Success);

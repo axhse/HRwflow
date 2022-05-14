@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace HRwflow.Models
 {
@@ -7,6 +9,7 @@ namespace HRwflow.Models
         public static readonly int TeamJoinLimit = 10;
         public static readonly int TeamMaxSize = 20;
         public static readonly int VacanciesMaxCount = 100;
+        public static readonly int VacancyTagMaxCount = 10;
     }
 
     public class WorkplaceService
@@ -27,46 +30,41 @@ namespace HRwflow.Models
         public WorkplaceResult<int> CreateTeam(
             string callerUsername, TeamProperties properties)
         {
-            var customerCertificate = _customerLocker.Acquire(callerUsername);
-            AcquireCertificate<int> teamCertificate = null;
-            try
+            if (callerUsername is null)
             {
-                var infoResult = _customerInfos.Get(callerUsername);
-                if (!infoResult.IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError<int>();
-                }
-                if (WorkplaceLimits.TeamJoinLimit <= infoResult.Value.JoinedTeamNames.Count)
-                {
-                    return WorkplaceResult.FromError<int>(WorkplaceErrors.JoinLimitExceeded);
-                }
-                var team = new Team { Properties = properties };
-                team.Permissions.Add(callerUsername, TeamPermissions.All);
-                var insertResult = _teams.Insert(team);
-                if (!insertResult.IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError<int>();
-                }
-                var getResult = _teams.Get(insertResult.Value);
-                if (!getResult.IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError<int>();
-                }
-                var teamId = getResult.Value.TeamId;
-                teamCertificate = _teamLocker.Acquire(teamId);
-                infoResult.Value.JoinedTeamNames.Add(teamId, properties.Name);
-                if (!_customerInfos.Update(callerUsername,
-                                           infoResult.Value).IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError<int>();
-                }
-                return WorkplaceResult.FromValue(teamId);
+                return WorkplaceResult.FromServerError<int>();
             }
-            finally
+            using var _ = _customerLocker.Acquire(callerUsername);
+            var infoResult = _customerInfos.Get(callerUsername);
+            if (!infoResult.IsCompleted
+                || infoResult.Value.AccountState != AccountStates.Active)
             {
-                customerCertificate.ReportRelease();
-                teamCertificate?.ReportRelease();
+                return WorkplaceResult.FromServerError<int>();
             }
+            if (WorkplaceLimits.TeamJoinLimit <= infoResult.Value.JoinedTeamNames.Count)
+            {
+                return WorkplaceResult.FromError<int>(WorkplaceErrors.JoinLimitExceeded);
+            }
+            var team = new Team { Properties = properties };
+            team.Permissions.Add(callerUsername, TeamPermissions.Direct);
+            var insertResult = _teams.Insert(team);
+            if (!insertResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<int>();
+            }
+            var getResult = _teams.Get(insertResult.Value);
+            if (!getResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<int>();
+            }
+            var teamId = getResult.Value.TeamId;
+            infoResult.Value.JoinedTeamNames.Add(teamId, properties.Name);
+            if (!_customerInfos.Update(callerUsername,
+                                        infoResult.Value).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<int>();
+            }
+            return WorkplaceResult.FromValue(teamId);
         }
 
         public WorkplaceResult<int> CreateVacancy(string callerUsername,
@@ -81,52 +79,184 @@ namespace HRwflow.Models
             throw new NotImplementedException();
         }
 
-        public WorkplaceResult<TeamInfo> GetTeamInfo(string callerUsername, int teamId)
+        public WorkplaceResult<Team> GetTeam(string callerUsername, int teamId)
         {
-            var teamCertificate = _teamLocker.Acquire(teamId);
-            try
+            if (callerUsername is null)
             {
-                var existsResult = _teams.HasKey(teamId);
-                if (!existsResult.IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError<TeamInfo>();
-                }
-                if (!existsResult.Value)
-                {
-                    return WorkplaceResult.FromError<TeamInfo>(
-                        WorkplaceErrors.ResourceNotFound);
-                }
-                var getResult = _teams.Get(teamId);
-                if (!getResult.IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError<TeamInfo>();
-                }
-                if (!getResult.Value.Permissions.ContainsKey(callerUsername))
-                {
-                    return WorkplaceResult.FromError<TeamInfo>(WorkplaceErrors.ResourceNotFound);
-                }
-                return WorkplaceResult.FromValue(new TeamInfo(callerUsername, getResult.Value));
+                return WorkplaceResult.FromServerError<Team>();
             }
-            finally
+            var existsResult = _teams.HasKey(teamId);
+            if (!existsResult.IsCompleted)
             {
-                teamCertificate.ReportRelease();
+                return WorkplaceResult.FromServerError<Team>();
             }
+            if (!existsResult.Value)
+            {
+                return WorkplaceResult.FromError<Team>(WorkplaceErrors.ResourceNotFound);
+            }
+            var getResult = _teams.Get(teamId);
+            if (!getResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<Team>();
+            }
+            if (!getResult.Value.Permissions.ContainsKey(callerUsername))
+            {
+                return WorkplaceResult.FromError<Team>(WorkplaceErrors.ResourceNotFound);
+            }
+            return WorkplaceResult.FromValue(getResult.Value);
         }
 
         public WorkplaceResult Invite(string callerUsername,
-            int teamId, string targetUsername)
+            int teamId, string subjectUsername)
         {
-            throw new NotImplementedException();
+            if (callerUsername is null || subjectUsername is null)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var existsResult = _customerInfos.HasKey(subjectUsername);
+            if (!existsResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            if (!existsResult.Value)
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.UserNotFound);
+            }
+            using var _ = _customerLocker.Acquire(callerUsername);
+            using var teamCertificate = _teamLocker.Acquire(teamId);
+            var infoResult = _customerInfos.Get(subjectUsername);
+            if (!infoResult.IsCompleted
+                || infoResult.Value.AccountState != AccountStates.Active)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var teamResult = _teams.Get(teamId);
+            if (!teamResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var team = teamResult.Value;
+            if (team.Permissions.ContainsKey(subjectUsername))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.UserAlreadyJoined);
+            }
+            if (WorkplaceLimits.TeamJoinLimit <= infoResult.Value.JoinedTeamNames.Count)
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.JoinLimitExceeded);
+            }
+            if (WorkplaceLimits.TeamMaxSize <= team.Permissions.Count)
+            {
+                return WorkplaceResult.FromError(
+                    WorkplaceErrors.TeamSizeLimitExceeded);
+            }
+            if (!team.Permissions.ContainsKey(callerUsername))
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            if (!team.Permissions[callerUsername].HasFlag(TeamPermissions.Manage))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
+            }
+            team.Permissions.Add(subjectUsername, TeamPermissions.None);
+            if (!_teams.Update(teamId, team).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            teamCertificate.ReportRelease();
+            infoResult.Value.JoinedTeamNames.Add(team.TeamId, team.Properties.Name);
+            if (!_customerInfos.Update(subjectUsername,
+                                        infoResult.Value).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            return WorkplaceResult.Succeed();
         }
 
         public WorkplaceResult Kick(string callerUsername,
-            int teamId, string targetUsername)
+                int teamId, string subjectUsername)
         {
-            throw new NotImplementedException();
+            if (callerUsername is null || subjectUsername is null)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            using var teamCertificate = _teamLocker.Acquire(teamId);
+            var teamResult = _teams.Get(teamId);
+            if (!teamResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var team = teamResult.Value;
+            var permissions = team.Permissions;
+            if (!permissions.ContainsKey(callerUsername))
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            if (!permissions.ContainsKey(subjectUsername))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.UserNotFound);
+            }
+            if (!CanKick(permissions[callerUsername], permissions[subjectUsername]))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
+            }
+            team.Permissions.Remove(subjectUsername);
+            if (!_teams.Update(teamId, team).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            teamCertificate.ReportRelease();
+            using var _ = _customerLocker.Acquire(subjectUsername);
+            var infoResult = _customerInfos.Get(subjectUsername);
+            if (infoResult.IsCompleted)
+            {
+                infoResult.Value.JoinedTeamNames.Remove(teamId);
+                _customerInfos.Update(subjectUsername, infoResult.Value);
+            }
+            return WorkplaceResult.Succeed();
+        }
+
+        public WorkplaceResult Leave(string callerUsername,
+            int teamId)
+        {
+            if (callerUsername is null)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            using var teamCertificate = _teamLocker.Acquire(teamId);
+            var teamResult = _teams.Get(teamId);
+            if (!teamResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var permissions = teamResult.Value.Permissions;
+            if (permissions.Count == 1)
+            {
+                if (!_teams.Delete(teamId).IsCompleted)
+                {
+                    return WorkplaceResult.FromServerError();
+                }
+            }
+            else
+            {
+                UpdatePermissonsWhenLeaving(permissions, callerUsername);
+                if (!_teams.Update(teamId, teamResult.Value).IsCompleted)
+                {
+                    return WorkplaceResult.FromServerError();
+                }
+            }
+            teamCertificate.ReportRelease();
+            using var _ = _customerLocker.Acquire(callerUsername);
+            var infoResult = _customerInfos.Get(callerUsername);
+            if (infoResult.IsCompleted)
+            {
+                infoResult.Value.JoinedTeamNames.Remove(teamId);
+                _customerInfos.Update(callerUsername, infoResult.Value);
+            }
+            return WorkplaceResult.Succeed();
         }
 
         public WorkplaceResult ModifyPermissions(string callerUsername,
-            int teamId, string targetUsername, TeamPermissions permissions)
+            int teamId, string subjectUsername, TeamPermissions permissions)
         {
             throw new NotImplementedException();
         }
@@ -134,61 +264,84 @@ namespace HRwflow.Models
         public WorkplaceResult ModifyTeamProperties(
             string callerUsername, int teamId, TeamProperties properties)
         {
-            var teamCertificate = _teamLocker.Acquire(teamId);
-            try
+            if (callerUsername is null)
             {
-                var teamResult = _teams.Get(teamId);
-                if (!teamResult.IsCompleted)
+                return WorkplaceResult.FromServerError();
+            }
+            using var teamCertificate = _teamLocker.Acquire(teamId);
+            var teamResult = _teams.Get(teamId);
+            if (!teamResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var team = teamResult.Value;
+            var teamName = team.Properties.Name;
+            if (!team.Permissions.ContainsKey(callerUsername)
+                || !team.Permissions[callerUsername].HasFlag(
+                    TeamPermissions.ModifyTeamProperties))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
+            }
+            team.Properties = properties;
+            if (!_teams.Update(teamId, team).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var memberUsernames = new List<string>(team.Permissions.Keys);
+            teamCertificate.ReportRelease();
+            if (properties.Name != teamName)
+            {
+                foreach (var username in memberUsernames)
                 {
-                    return WorkplaceResult.FromServerError();
-                }
-                var team = teamResult.Value;
-                var teamName = team.Properties.Name;
-                if (!team.Permissions.ContainsKey(callerUsername)
-                    || !team.Permissions[callerUsername].HasFlag(
-                        TeamPermissions.ModifyTeamProperties))
-                {
-                    return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
-                }
-                team.Properties = properties;
-                if (!_teams.Update(teamId, team).IsCompleted)
-                {
-                    return WorkplaceResult.FromServerError();
-                }
-                if (properties.Name != teamName)
-                {
-                    // FIXME: Create background worker
-                    foreach (var username in team.Permissions.Keys)
+                    using var _ = _customerLocker.Acquire(username);
+                    var infoResult = _customerInfos.Get(username);
+                    if (infoResult.IsCompleted &&
+                        infoResult.Value.JoinedTeamNames.ContainsKey(teamId))
                     {
-                        var customerCertificate = _customerLocker.Acquire(username);
-                        try
-                        {
-                            var infoResult = _customerInfos.Get(username);
-                            if (infoResult.IsCompleted)
-                            {
-                                var info = infoResult.Value;
-                                info.JoinedTeamNames[teamId] = properties.Name;
-                                _customerInfos.Update(username, info);
-                            }
-                        }
-                        finally
-                        {
-                            customerCertificate.ReportRelease();
-                        }
+                        infoResult.Value.JoinedTeamNames[teamId] = properties.Name;
+                        _customerInfos.Update(username, infoResult.Value);
                     }
                 }
-                return WorkplaceResult.Succeed();
             }
-            finally
-            {
-                teamCertificate.ReportRelease();
-            }
+            return WorkplaceResult.Succeed();
         }
 
         public WorkplaceResult ModifyVacancyProperties(string callerUsername,
             int teamId, int vacancyId, VacancyProperties vacancyProperties)
         {
             throw new NotImplementedException();
+        }
+
+        private static bool CanKick(TeamPermissions callerPermission,
+                             TeamPermissions subjectPermissions)
+        {
+            return (callerPermission.HasFlag(TeamPermissions.Direct)
+                && !subjectPermissions.HasFlag(TeamPermissions.Direct))
+                || (callerPermission.HasFlag(TeamPermissions.Manage)
+                && !subjectPermissions.HasFlag(TeamPermissions.Manage));
+        }
+
+        private static void UpdatePermissonsWhenLeaving(
+            Dictionary<string, TeamPermissions> permissions,
+            string leavingUsername)
+        {
+            if (!permissions.ContainsKey(leavingUsername))
+            {
+                return;
+            }
+            permissions.Remove(leavingUsername);
+            if (!permissions.Values.Any(p => p.HasFlag(TeamPermissions.Direct)))
+            {
+                bool promoteAll =
+                    !permissions.Values.Any(p => p.HasFlag(TeamPermissions.Manage));
+                foreach (var key in permissions.Keys)
+                {
+                    if (promoteAll || permissions[key].HasFlag(TeamPermissions.Manage))
+                    {
+                        permissions[key] |= TeamPermissions.Direct;
+                    }
+                }
+            }
         }
     }
 }

@@ -1,13 +1,13 @@
 ﻿@model RedirectionVM
 @{
 	ViewData["Title"] = "Redirection";
-	TempData["Info-text"] = Model.Mode switch {
+	var redirectionText = Model.Mode switch {
 		RedirectionModes.Success => "Успешно. Перенаправление...",
 		RedirectionModes.Warning => "Ошибка. Перенаправление...",
 		RedirectionModes.Danger => "Ошибка. Перенаправление...",
 		_ => "Перенаправление..."
 	};
-	TempData["Text-class"] = Model.Mode switch
+	var textClass = Model.Mode switch
 	{
 		RedirectionModes.Success => "text-success",
 		RedirectionModes.Warning => "text-warning",
@@ -16,4 +16,6 @@
 	};
 }
 
-<h4 class="@TempData["Text-class"] text-center mt-4 fw-bold">@TempData["Info-text"]</h4>
+<div class="mt-4">
+	<h4 class="@textClass text-center fw-bold">@redirectionText</h4>
+</div>

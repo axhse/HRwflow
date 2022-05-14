@@ -48,6 +48,5 @@ namespace HRwflow.Models
         public Dictionary<string, TeamPermissions> Permissions { get; set; } = new();
         public TeamProperties Properties { get; set; } = new();
         public int TeamId { get; set; }
-        public Dictionary<int, Vacancy> Vacancies { get; set; } = new();
     }
 }

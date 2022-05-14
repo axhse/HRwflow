@@ -4,8 +4,8 @@ namespace HRwflow.Models.Data
 {
     public class CustomerInfoDbContext : DatabaseContext<CustomerInfo>
     {
-        public CustomerInfoDbContext(DbContextOptions<CustomerInfoDbContext> options) : base(options)
-        { }
+        public CustomerInfoDbContext(DbContextOptions<CustomerInfoDbContext> options)
+            : base(options) { }
 
         public CustomerInfoDbContext(string connectionString) : base(connectionString)
         { }

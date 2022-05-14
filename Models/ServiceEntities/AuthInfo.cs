@@ -3,7 +3,7 @@ using System.Text;
 
 namespace HRwflow.Models
 {
-    public class AuthCertificate
+    public class AuthInfo
     {
         public string PasswordHash { get; set; }
         public string Username { get; set; }

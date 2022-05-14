@@ -6,12 +6,11 @@ namespace HRwflow.Models
     public enum TeamPermissions
     {
         None = 0,
-        Direct = 1,
-        Manage = 2,
-        ModifyTeamProperties = 4,
-        CreateVacancy = 8,
-        DeleteVacancy = 16,
-        ModifyVacancyProperties = 32,
-        All = 64 - 1
+        ModifyTeamProperties = 1,
+        CreateVacancy = 2,
+        DeleteVacancy = 4,
+        ModifyVacancyProperties = 8,
+        Manage = 16,
+        Direct = 32 + (32 - 1)
     }
 }

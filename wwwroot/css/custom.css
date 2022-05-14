@@ -52,3 +52,9 @@
 .create-team-btn {
     width: 7rem;
 }
+
+.username-link {
+    text-decoration: none;
+    display: inline-block;
+    margin: 0.5rem 1rem;
+}
