@@ -31,7 +31,7 @@
         @foreach (var keyValuePair in Model.CustomerInfo.JoinedTeamNames)
         {
 	        <a class="btn btn-light btn-lg list-group-item-primary team-btn"
-                href="/workplace/team/@keyValuePair.Key">@keyValuePair.Value</a>
+                href="/workplace/team?teamId=@keyValuePair.Key">@keyValuePair.Value</a>
         }
 	    <a class="btn btn-light btn-lg list-group-item-success team-btn fw-bold
             create-team-btn" href="/workplace/createteam">+</a>

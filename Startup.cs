@@ -44,7 +44,7 @@ namespace HRwflow
             {
                 endpoints.MapControllerRoute(
                     name: "UseControllerAndAction",
-                    pattern: "/{controller=Home}/{action=Main}/{id=0}"
+                    pattern: "/{controller=Home}/{action=Main}/{*any}"
                 );
                 endpoints.MapControllerRoute(
                     name: "RedirectMain",

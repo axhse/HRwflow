@@ -48,5 +48,8 @@ namespace HRwflow.Models
         public Dictionary<string, TeamPermissions> Permissions { get; set; } = new();
         public TeamProperties Properties { get; set; } = new();
         public int TeamId { get; set; }
+
+        public bool HasMember(string username)
+            => Permissions.ContainsKey(username);
     }
 }

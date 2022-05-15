@@ -1,0 +1,91 @@
+﻿@model MemberProfileVM
+@{
+	ViewData["Title"] = "Profile";
+	var roleNames = new Dictionary<TeamPermissions, string>
+	{
+		[TeamPermissions.Observer] = "Наблюдатель",
+		[TeamPermissions.Commentator] = "Комментатор",
+		[TeamPermissions.Editor] =
+			"Редактор",
+		[TeamPermissions.Manager] =
+			"Менеджер",
+		[TeamPermissions.Director] = "Директор",
+
+	};
+	var roleDescriptions = new Dictionary<TeamPermissions, string>
+	{
+		[TeamPermissions.Observer] = "никаких активных действий",
+		[TeamPermissions.Commentator] = "комментирование вакансий",
+		[TeamPermissions.Editor] =
+			"дополнительно создание/удаление/редактирование вакансий",
+		[TeamPermissions.Manager] =
+			"дополнительно добавление и удаление участников, изменение их разрешений",
+		[TeamPermissions.Director] = "все действия, кроме удаления"
+			+ " других директоров и изменения их разрешений",
+
+	};
+	var allRoles = new List<TeamPermissions>
+	{
+		TeamPermissions.Observer,
+		TeamPermissions.Commentator,
+		TeamPermissions.Editor,
+		TeamPermissions.Manager,
+		TeamPermissions.Director
+	};
+}
+
+<div class="container" align="center">
+	<div class="navbar custom-navbar border-bottom">
+		<div class="container" align="center">
+			<div class="col-12 mt-3">
+				<p class="text-dark fw-bold">@($"{Model.TeamName} | {Model.Username}")</p>
+			</div>
+		</div>
+	</div>
+	@foreach(var role in allRoles){
+		if (Model.SubjectPermissions == role)
+		{
+			<div class="mt-5">
+				<p class="text-primary">
+					@($"Текущий уровень доступа: {roleNames[role]}")
+				</p>
+			</div>
+		}
+	}
+	@if (Model.GetPossibleAppointments().Count() > 1)
+	{
+		<div class="col-10 mt-5" align="center">
+			<form method="POST">
+				<div style="display: inline-block;" align="left">
+					@foreach(var role in Model.GetPossibleAppointments())
+					{
+						var roleValue = ((int)role).ToString();
+						var buttonId = $"{role.ToString().ToLower()}Radio";
+						<div class="mt-3">
+							<input class="form-check-input" type="radio"
+									name="role" id="@buttonId" value="@roleValue">
+							<label class="form-check-label" for="@buttonId">
+								@($"{roleNames[role]}: {roleDescriptions[role]}")
+							</label>
+						</div>
+					}
+				</div>
+				<div class="mt-5">
+					<button type="submit" class="btn btn-primary custom-btn">
+						Изменить уровень доступа
+					</button>
+					@if (Model.CanKick){
+					<button type="submit" class="btn btn-danger custom-btn" name="kick" value="true">
+						Исключить из группы
+					</button>
+					}
+				</div>
+			</form>
+		</div>
+	}
+	<div class="mt-4">
+		<a class="link-secondary" href="/workplace/team?teamId=@Model.TeamId">
+			Вернуться
+		</a>
+	</div>
+</div>

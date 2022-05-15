@@ -27,8 +27,39 @@ namespace HRwflow.Models
             _teams = teams;
         }
 
+        public static bool CanChangeRole(TeamPermissions callerPermission,
+                             TeamPermissions subjectPermissions,
+                             TeamPermissions newRole)
+        {
+            bool canDirect = callerPermission.HasFlag(TeamPermissions.Director)
+                    && !subjectPermissions.HasFlag(TeamPermissions.Director);
+            bool canManage = canDirect || callerPermission.HasFlag(TeamPermissions.Manager)
+                    && !subjectPermissions.HasFlag(TeamPermissions.Manager);
+            return newRole switch
+            {
+                TeamPermissions.Director
+                    => canDirect,
+                TeamPermissions.Manager
+                    => canDirect,
+                TeamPermissions.Editor => canManage,
+                TeamPermissions.Commentator => canManage,
+                TeamPermissions.Observer => canManage,
+                _ => false
+            };
+        }
+
+        public static bool CanKick(TeamPermissions callerPermission,
+                             TeamPermissions subjectPermissions)
+        {
+            return (callerPermission.HasFlag(TeamPermissions.KickDirector)
+                || (callerPermission.HasFlag(TeamPermissions.KickManager)
+                && !subjectPermissions.HasFlag(TeamPermissions.Director))
+                || (callerPermission.HasFlag(TeamPermissions.KickMember)
+                && !subjectPermissions.HasFlag(TeamPermissions.Manager)));
+        }
+
         public WorkplaceResult<int> CreateTeam(
-            string callerUsername, TeamProperties properties)
+                            string callerUsername, TeamProperties properties)
         {
             if (callerUsername is null)
             {
@@ -46,7 +77,7 @@ namespace HRwflow.Models
                 return WorkplaceResult.FromError<int>(WorkplaceErrors.JoinLimitExceeded);
             }
             var team = new Team { Properties = properties };
-            team.Permissions.Add(callerUsername, TeamPermissions.Direct);
+            team.Permissions.Add(callerUsername, TeamPermissions.Director);
             var insertResult = _teams.Insert(team);
             if (!insertResult.IsCompleted)
             {
@@ -99,7 +130,7 @@ namespace HRwflow.Models
             {
                 return WorkplaceResult.FromServerError<Team>();
             }
-            if (!getResult.Value.Permissions.ContainsKey(callerUsername))
+            if (!getResult.Value.HasMember(callerUsername))
             {
                 return WorkplaceResult.FromError<Team>(WorkplaceErrors.ResourceNotFound);
             }
@@ -136,7 +167,7 @@ namespace HRwflow.Models
                 return WorkplaceResult.FromServerError();
             }
             var team = teamResult.Value;
-            if (team.Permissions.ContainsKey(subjectUsername))
+            if (team.HasMember(subjectUsername))
             {
                 return WorkplaceResult.FromError(WorkplaceErrors.UserAlreadyJoined);
             }
@@ -149,11 +180,11 @@ namespace HRwflow.Models
                 return WorkplaceResult.FromError(
                     WorkplaceErrors.TeamSizeLimitExceeded);
             }
-            if (!team.Permissions.ContainsKey(callerUsername))
+            if (!team.HasMember(callerUsername))
             {
                 return WorkplaceResult.FromServerError();
             }
-            if (!team.Permissions[callerUsername].HasFlag(TeamPermissions.Manage))
+            if (!team.Permissions[callerUsername].HasFlag(TeamPermissions.Invite))
             {
                 return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
             }
@@ -187,11 +218,11 @@ namespace HRwflow.Models
             }
             var team = teamResult.Value;
             var permissions = team.Permissions;
-            if (!permissions.ContainsKey(callerUsername))
+            if (!team.HasMember(callerUsername))
             {
                 return WorkplaceResult.FromServerError();
             }
-            if (!permissions.ContainsKey(subjectUsername))
+            if (!team.HasMember(subjectUsername))
             {
                 return WorkplaceResult.FromError(WorkplaceErrors.UserNotFound);
             }
@@ -255,10 +286,40 @@ namespace HRwflow.Models
             return WorkplaceResult.Succeed();
         }
 
-        public WorkplaceResult ModifyPermissions(string callerUsername,
-            int teamId, string subjectUsername, TeamPermissions permissions)
+        public WorkplaceResult ModifyRole(string callerUsername,
+            int teamId, string subjectUsername, TeamPermissions newRole)
         {
-            throw new NotImplementedException();
+            if (callerUsername is null)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            using var _ = _teamLocker.Acquire(teamId);
+            var teamResult = _teams.Get(teamId);
+            if (!teamResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var team = teamResult.Value;
+            var permissions = team.Permissions;
+            if (!team.HasMember(callerUsername))
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            if (!team.HasMember(subjectUsername))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.UserNotFound);
+            }
+            if (!CanChangeRole(permissions[callerUsername],
+                permissions[subjectUsername], newRole))
+            {
+                return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
+            }
+            team.Permissions[subjectUsername] = newRole;
+            if (!_teams.Update(teamId, team).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            return WorkplaceResult.Succeed();
         }
 
         public WorkplaceResult ModifyTeamProperties(
@@ -276,7 +337,7 @@ namespace HRwflow.Models
             }
             var team = teamResult.Value;
             var teamName = team.Properties.Name;
-            if (!team.Permissions.ContainsKey(callerUsername)
+            if (!team.HasMember(callerUsername)
                 || !team.Permissions[callerUsername].HasFlag(
                     TeamPermissions.ModifyTeamProperties))
             {
@@ -312,15 +373,6 @@ namespace HRwflow.Models
             throw new NotImplementedException();
         }
 
-        private static bool CanKick(TeamPermissions callerPermission,
-                             TeamPermissions subjectPermissions)
-        {
-            return (callerPermission.HasFlag(TeamPermissions.Direct)
-                && !subjectPermissions.HasFlag(TeamPermissions.Direct))
-                || (callerPermission.HasFlag(TeamPermissions.Manage)
-                && !subjectPermissions.HasFlag(TeamPermissions.Manage));
-        }
-
         private static void UpdatePermissonsWhenLeaving(
             Dictionary<string, TeamPermissions> permissions,
             string leavingUsername)
@@ -330,15 +382,15 @@ namespace HRwflow.Models
                 return;
             }
             permissions.Remove(leavingUsername);
-            if (!permissions.Values.Any(p => p.HasFlag(TeamPermissions.Direct)))
+            if (!permissions.Values.Any(p => p.HasFlag(TeamPermissions.Director)))
             {
                 bool promoteAll =
-                    !permissions.Values.Any(p => p.HasFlag(TeamPermissions.Manage));
+                    !permissions.Values.Any(p => p.HasFlag(TeamPermissions.Manager));
                 foreach (var key in permissions.Keys)
                 {
-                    if (promoteAll || permissions[key].HasFlag(TeamPermissions.Manage))
+                    if (promoteAll || permissions[key].HasFlag(TeamPermissions.Manager))
                     {
-                        permissions[key] |= TeamPermissions.Direct;
+                        permissions[key] |= TeamPermissions.Director;
                     }
                 }
             }
