@@ -5,11 +5,10 @@ using System.Text.RegularExpressions;
 
 namespace HRwflow.Models
 {
-    public enum VacancyState
+    public enum VacancyStates
     {
         Active,
-        Closed,
-        Cancelled,
+        Completed,
     }
 
     public struct VacancyProperties
@@ -39,7 +38,7 @@ namespace HRwflow.Models
             set => TrySetDescription(value);
         }
 
-        public VacancyState State { get; set; }
+        public VacancyStates State { get; set; }
 
         public string Title
         {
@@ -63,8 +62,8 @@ namespace HRwflow.Models
         public static bool TagIsCorrect(string tag) => tag is not null
             && Regex.IsMatch(tag, $"^[{TagCorrectSymbols}]{{2,20}}$");
 
-        public static bool TitleIsCorrect(string title)
-            => title is null || title.Length <= 100;
+        public static bool TitleIsCorrect(string title) => title is null
+            || (1 <= title.Length && title.Length <= 100);
 
         public void RemoveTag(string tag)
         {
@@ -87,6 +86,10 @@ namespace HRwflow.Models
 
         public bool TrySetDescription(string description)
         {
+            if (description is not null)
+            {
+                description = description.Trim();
+            }
             if (!DescriptionIsCorrect(description))
             {
                 return false;
@@ -97,6 +100,10 @@ namespace HRwflow.Models
 
         public bool TrySetTitle(string title)
         {
+            if (title is not null)
+            {
+                title = title.Trim();
+            }
             if (!TitleIsCorrect(title))
             {
                 return false;
@@ -108,10 +115,41 @@ namespace HRwflow.Models
 
     public class Vacancy
     {
-        public Dictionary<string, string> Notes = new();
+        public Dictionary<string, VacancyNote> Notes = new();
         public DateTime CreationTime { get; } = DateTime.UtcNow;
+        public DateTime LastNoteTime { get; set; } = DateTime.UtcNow;
         public int OwnerTeamId { get; set; }
         public VacancyProperties Properties { get; set; } = new();
         public int VacancyId { get; set; }
+    }
+
+    public class VacancyNote
+    {
+        private string _text;
+        public DateTime LastChangeTime { get; private set; } = DateTime.UtcNow;
+
+        public string Text
+        {
+            get => _text is null ? string.Empty : _text;
+            set => TrySetText(value);
+        }
+
+        public static bool TextIsCorrect(string text)
+            => text is null || text.Length <= 1000;
+
+        public bool TrySetText(string text)
+        {
+            if (text is not null)
+            {
+                text = text.Trim();
+            }
+            if (!TextIsCorrect(text))
+            {
+                return false;
+            }
+            _text = text;
+            LastChangeTime = DateTime.UtcNow;
+            return true;
+        }
     }
 }

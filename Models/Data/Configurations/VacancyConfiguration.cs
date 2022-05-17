@@ -17,12 +17,15 @@ namespace HRwflow.Models.Data
             builder.Property(vacancy => vacancy.CreationTime).IsRequired();
             builder.Property(vacancy => vacancy.CreationTime)
                    .HasConversion(new DateTimeConverter());
+            builder.Property(vacancy => vacancy.LastNoteTime).IsRequired();
+            builder.Property(vacancy => vacancy.LastNoteTime)
+                   .HasConversion(new DateTimeConverter());
             builder.Property(vacancy => vacancy.Properties).IsRequired();
             builder.Property(vacancy => vacancy.Properties)
                    .HasConversion(new JsonConverter<VacancyProperties>());
             builder.Property(vacancy => vacancy.Notes).IsRequired();
-            builder.Property(vacancy => vacancy.Notes)
-                   .HasConversion(new JsonConverter<Dictionary<string, string>>());
+            builder.Property(vacancy => vacancy.Notes).HasConversion(
+                new JsonConverter<Dictionary<string, VacancyNote>>());
             builder.ToTable(nameof(Vacancy));
         }
     }

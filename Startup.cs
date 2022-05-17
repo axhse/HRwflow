@@ -84,20 +84,23 @@ namespace HRwflow
                     new CustomerInfoDbContext(connectionString));
             var teamService = new DbContextService<int, Team>(
                     new TeamDbContext(connectionString));
+            var vacancyService = new DbContextService<int, Vacancy>(
+                    new VacancyDbContext(connectionString));
 
             services.AddSingleton<IAuthService>(
                 new AuthService(
                     new DbContextService<string, AuthInfo>(
                         new AuthInfoDbContext(connectionString))));
 
-            services.AddSingleton<IStorageService<string, Customer>>(new DbContextService<string, Customer>(
+            services.AddSingleton<IStorageService<string, Customer>>(
+                new DbContextService<string, Customer>(
                     new CustomerDbContext(connectionString)));
 
             services.AddSingleton<IStorageService<string, CustomerInfo>>(
                 customerInfoService);
-            services.AddSingleton<IStorageService<int, Team>>(teamService);
 
-            services.AddSingleton(new WorkplaceService(customerInfoService, teamService));
+            services.AddSingleton(new WorkplaceService(
+                customerInfoService, teamService, vacancyService));
         }
     }
 }

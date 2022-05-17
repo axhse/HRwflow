@@ -49,7 +49,9 @@ namespace HRwflow.Models
         public TeamProperties Properties { get; set; } = new();
         public int TeamId { get; set; }
 
+        public int VacancyCount { get; set; } = 0;
+
         public bool HasMember(string username)
-            => Permissions.ContainsKey(username);
+                    => Permissions.ContainsKey(username);
     }
 }

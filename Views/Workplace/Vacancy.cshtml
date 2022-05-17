@@ -1,0 +1,64 @@
+﻿@model VacancyVM
+@{
+	ViewData["Title"] = "Vacancy";
+	var vacancy = Model.Vacancy;
+    var stateText = vacancy.Properties.State switch
+    {
+        VacancyStates.Active => "Активна",
+        VacancyStates.Completed => "Завершена",
+        _ => null
+    };
+}
+
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 mt-3">
+			<p class="text-dark fw-bold">Вакансия</p>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-5" align="center">
+	<div class="col-12 col-md-10 col-lg-8 col-xl-6">
+        <div class="card border-dark">
+            <div class="card-body text-dark">
+                <h5 class="card-title mt-2">@vacancy.Properties.Title</h5>
+                <p class="card-text mt-4 mb-3">@vacancy.Properties.Description</p>
+            </div>
+            <div class="card-footer bg-transparent text-secondary">
+                <p class="my-2">
+                    @($"{stateText}, создана"
+                    + $" {vacancy.CreationTime.ToString("dd.MM.yyyy")}")
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-5">
+			@if(Model.Team.HasMember(Model.Username)
+				&& Model.Team.Permissions[Model.Username].HasFlag(
+					TeamPermissions.ModifyVacancy))
+			{
+				<a class="btn btn-success my-1"
+						href="/workplace/editvacancy?vacancyId=@Model.Vacancy.VacancyId">
+					Редактировать
+				</a>
+			}
+			@if(Model.Team.HasMember(Model.Username)
+				&& Model.Team.Permissions[Model.Username].HasFlag(
+					TeamPermissions.DeleteVacancy))
+			{
+				<a class="btn btn-secondary my-1"
+						href="/workplace/deletevacancy?vacancyId=@Model.Vacancy.VacancyId">
+					Удалить
+				</a>
+			}
+		</div>
+    </div>
+
+	<div class="mt-5">
+		<a class="link-secondary"
+				href="/workplace/vacancies?teamId=@Model.Vacancy.OwnerTeamId">
+			Другие вакансии
+		</a>
+	</div>
+</div>

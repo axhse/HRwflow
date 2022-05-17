@@ -28,7 +28,7 @@
             if (!Customer.UsernameIsCorrect(username)
                 || !Customer.PasswordIsCorrect(password))
             {
-                return TaskResult<bool>.Uncompleted();
+                return TaskResult.FromValue(false);
             }
             var result = _authInfos.Get(username);
             if (!result.IsCompleted)

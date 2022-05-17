@@ -37,15 +37,11 @@
 				}
 			</div>
 			<div class="mt-4" align="left">
-				@if (Model.RememberMeChecked)
-				{
-					<input class="form-check-input ms-3 me-2" type="checkbox" id="rememberMeChecker" name="rememberMe" checked>
-				}
-				else
-				{
-					<input class="form-check-input ms-3 me-2" type="checkbox" id="rememberMeChecker" name="rememberMe">
-				}
-				<label for="rememberMeChecker" class="form-check-label text-dark">Запомнить меня</label>
+				<input class="form-check-input ms-3 me-2" type="checkbox" id="rememberMeChecker"
+					name="rememberMe" @(Model.RememberMeChecked ? "checked" : "")>
+				<label for="rememberMeChecker" class="form-check-label text-dark">
+					Запомнить меня
+				</label>
 			</div>
 			<div class="mt-4">
 				<button type="submit" class="btn btn-primary">Войти</button>

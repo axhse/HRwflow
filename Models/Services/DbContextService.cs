@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using HRwflow.Models.Data;
 
 namespace HRwflow.Models
@@ -130,7 +131,8 @@ namespace HRwflow.Models
             }
         }
 
-        public TaskResult<IEnumerable<TEntity>> Select(Func<TEntity, bool> selector)
+        public TaskResult<IEnumerable<TEntity>> Select(
+            Expression<Func<TEntity, bool>> selector)
         {
             if (selector is null)
             {
@@ -139,9 +141,7 @@ namespace HRwflow.Models
             try
             {
                 return TaskResult.FromValue(
-                       (from item in _databaseContext.Items
-                        where selector(item)
-                        select item).AsEnumerable());
+                    _databaseContext.Items.Where(selector).AsEnumerable());
             }
             catch
             {

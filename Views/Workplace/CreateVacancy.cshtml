@@ -1,12 +1,12 @@
-﻿@model EditTeamPropertiesVM
+﻿@model EditVacancyPropertiesVM
 @{
-	ViewData["Title"] = "Create Team";
+	ViewData["Title"] = "Create Vacancy";
 }
 
 <div class="navbar custom-navbar border-bottom">
 	<div class="container" align="center">
 		<div class="col-12 mt-3">
-			<p class="text-dark fw-bold">Создание группы</p>
+			<p class="text-dark fw-bold">Создание вакансии</p>
 		</div>
 	</div>
 </div>
@@ -15,14 +15,14 @@
 	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
 		<form method="POST">
 			<div>
-				<label for="nameInput" class="form-label">
-					Название группы
+				<label for="titleInput" class="form-label">
+					Название вакансии
 				</label>
-				<input type="text" class="form-control text-center" id="nameInput" name="name">
-				@if (!Model.NameIsCorrect)
+				<input type="text" class="form-control text-center" id="titleInput" name="title">
+				@if (!Model.TitleIsCorrect)
 				{
 					<p class="text-info">
-						Название должно иметь длину от 2 до 40 символов.
+						Название должно иметь длину от 1 до 100 символов.
 					</p>
 				}
 			</div>

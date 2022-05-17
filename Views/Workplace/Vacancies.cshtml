@@ -1,0 +1,118 @@
+﻿@model VacancyListVM
+@{
+	ViewData["Title"] = "Vacancies";
+	var timeSpanNames = new Dictionary<TimeSpans, string>
+	{
+		[TimeSpans.Hour] = "Час",
+		[TimeSpans.Day] = "День",
+		[TimeSpans.Week] = "Неделя",
+		[TimeSpans.Month] = "Месяц",
+		[TimeSpans.Max] = "Все время"
+	};
+	var vacancyStateNames = new Dictionary<VacancyStates, string>
+	{
+		[VacancyStates.Active] = "Активные",
+		[VacancyStates.Completed] = "Завершенные"
+	};
+}
+
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 mt-3">
+			<p class="text-dark fw-bold">@($"{Model.TeamName} | Вакансии")</p>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-5" align="center">
+	<div class="col-10">
+		<form method="POST">
+			<div>
+				<p class="text-primary d-inline">
+					Создано за последние:
+				</p>
+				@foreach(var (timeSpan, name) in timeSpanNames)
+				{
+					var timeSpanValue = timeSpan.ToString();
+					var buttonId = $"{timeSpan}CreationRadio";
+					<div class="d-inline-block">
+						<input class="form-check-input ms-3" type="radio"
+							name="creationTimeOffset" id="@buttonId" value="@timeSpanValue"
+							@(timeSpan == Model.CreationTimeOffset ? "checked" : "")>
+						<label class="form-check-label" for="@buttonId">
+							@name
+						</label>
+					</div>
+				}
+			</div>
+			<div class="mt-3">
+				<p class="text-primary d-inline">
+					Заметки обновлялись за последние:
+				</p>
+				@foreach(var (timeSpan, name) in timeSpanNames)
+				{
+					var timeSpanValue = timeSpan.ToString();
+					var buttonId = $"{timeSpan}LastNoteRadio";
+					<div class="d-inline-block">
+						<input class="form-check-input ms-3" type="radio"
+							name="lastNoteTimeOffset" id="@buttonId" value="@timeSpanValue"
+							@(timeSpan == Model.LastNoteTimeOffset ? "checked" : "")>
+						<label class="form-check-label" for="@buttonId">
+							@name
+						</label>
+					</div>
+				}
+			</div>
+			<div class="mt-3">
+				@foreach(var (vacancyState, name) in vacancyStateNames)
+				{
+					var vacancyStateValue = vacancyState.ToString();
+					var buttonName = $"vacancyState{vacancyState}";
+					var buttonId = $"{vacancyState}StateRadio";
+					<div class="d-inline-block">
+						<input class="form-check-input ms-3" type="checkbox"
+							name="@buttonName" id="@buttonId" value="@vacancyStateValue"
+							@(Model.VacancyStates.Contains(vacancyState) ? "checked" : "")>
+						<label class="form-check-label" for="@buttonId">
+							@name
+						</label>
+					</div>
+				}
+			</div>
+			<div class="mt-4">
+				<button type="submit" class="btn text-primary btn-light my-1">
+					Поиск
+				</button>
+			</div>
+		</form>
+	</div>
+
+    <div class="row mt-5">
+        @foreach (var vacancy in Model.SelectedVacancies)
+        {
+            var colorName = vacancy.Properties.State switch
+            {
+                VacancyStates.Active => "primary",
+                VacancyStates.Completed => "success",
+                _ => null
+            };
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xxl-2 my-2">
+                <a class="vacancy-link" href="/workplace/vacancy?vacancyId=@vacancy.VacancyId">
+                    <div class="card border-@colorName h-100">
+                        <div class="card-body text-@colorName vertically-centered-div">
+                            <h5 class="card-title">
+								@vacancy.Properties.Title
+							</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+
+	<div class="mt-5">
+		<a class="link-secondary" href="/workplace/team?teamId=@Model.TeamId">
+			Главная страница группы
+		</a>
+	</div>
+</div>

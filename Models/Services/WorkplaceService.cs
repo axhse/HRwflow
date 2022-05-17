@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace HRwflow.Models
@@ -18,13 +17,17 @@ namespace HRwflow.Models
         private readonly ItemLocker<string> _customerLocker = new();
         private readonly ItemLocker<int> _teamLocker = new();
         private readonly IStorageService<int, Team> _teams;
+        private readonly IStorageService<int, Vacancy> _vacancies;
+        private readonly ItemLocker<int> _vacancyLocker = new();
 
         public WorkplaceService(
             IStorageService<string, CustomerInfo> customerInfos,
-            IStorageService<int, Team> teams)
+            IStorageService<int, Team> teams,
+            IStorageService<int, Vacancy> vacancies)
         {
             _customerInfos = customerInfos;
             _teams = teams;
+            _vacancies = vacancies;
         }
 
         public static bool CanChangeRole(TeamPermissions callerPermission,
@@ -101,13 +104,72 @@ namespace HRwflow.Models
         public WorkplaceResult<int> CreateVacancy(string callerUsername,
             int teamId, VacancyProperties properties)
         {
-            throw new NotImplementedException();
+            if (callerUsername is null)
+            {
+                return WorkplaceResult.FromServerError<int>();
+            }
+            using var _ = _teamLocker.Acquire(teamId);
+            var teamResult = GetTeam(callerUsername, teamId);
+            if (teamResult.HasError)
+            {
+                return WorkplaceResult.FromError<int>(teamResult.Error);
+            }
+            var team = teamResult.Value;
+            if (!team.Permissions[callerUsername].HasFlag(
+                    TeamPermissions.CreateVacancy))
+            {
+                return WorkplaceResult.FromError<int>(WorkplaceErrors.NoPermission);
+            }
+            if (WorkplaceLimits.VacanciesMaxCount <= team.VacancyCount)
+            {
+                return WorkplaceResult.FromError<int>(WorkplaceErrors.VacancyCountLimitExceeded);
+            }
+            team.VacancyCount++;
+            if (!_teams.Update(teamId, team).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<int>();
+            }
+            var vacancy = new Vacancy
+            {
+                OwnerTeamId = teamId,
+                Properties = properties
+            };
+            var insertResult = _vacancies.Insert(vacancy);
+            if (!insertResult.IsCompleted)
+            {
+                team.VacancyCount--;
+                _teams.Update(teamId, team);
+                return WorkplaceResult.FromServerError<int>();
+            }
+            return WorkplaceResult.FromValue(insertResult.Value);
         }
 
         public WorkplaceResult DeleteVacancy(string callerUsername,
-            int teamId, int vacancyId)
+            int vacancyId)
         {
-            throw new NotImplementedException();
+            var vacancyResult = GetVacancy(
+                callerUsername, vacancyId, TeamPermissions.DeleteVacancy);
+            if (vacancyResult.HasError)
+            {
+                return WorkplaceResult.FromError(vacancyResult.Error);
+            }
+            if (!_vacancies.Delete(vacancyResult.Value.VacancyId).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            var teamId = vacancyResult.Value.OwnerTeamId;
+            using var _ = _teamLocker.Acquire(teamId);
+            var teamResult = _teams.Get(teamId);
+            if (!teamResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            teamResult.Value.VacancyCount--;
+            if (!_teams.Update(teamId, teamResult.Value).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            return WorkplaceResult.Succeed();
         }
 
         public WorkplaceResult<Team> GetTeam(string callerUsername, int teamId)
@@ -135,6 +197,58 @@ namespace HRwflow.Models
                 return WorkplaceResult.FromError<Team>(WorkplaceErrors.ResourceNotFound);
             }
             return WorkplaceResult.FromValue(getResult.Value);
+        }
+
+        public WorkplaceResult<IEnumerable<Vacancy>> GetVacancies(
+            string callerUsername, int teamId)
+        {
+            var teamResult = GetTeam(callerUsername, teamId);
+            if (teamResult.HasError)
+            {
+                return WorkplaceResult.FromError<IEnumerable<Vacancy>>(teamResult.Error);
+            }
+            var selectionResult = _vacancies.Select(
+                vacancy => vacancy.OwnerTeamId == teamId);
+            if (!selectionResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<IEnumerable<Vacancy>>();
+            }
+            return WorkplaceResult.FromValue(selectionResult.Value);
+        }
+
+        public WorkplaceResult<Vacancy> GetVacancy(
+            string callerUsername, int vacancyId,
+            TeamPermissions requiredPermissions = TeamPermissions.None)
+        {
+            if (callerUsername is null)
+            {
+                return WorkplaceResult.FromServerError<Vacancy>();
+            }
+            var existsResult = _vacancies.HasKey(vacancyId);
+            if (!existsResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<Vacancy>();
+            }
+            if (!existsResult.Value)
+            {
+                return WorkplaceResult.FromError<Vacancy>(WorkplaceErrors.ResourceNotFound);
+            }
+            var vacancyResult = _vacancies.Get(vacancyId);
+            if (!vacancyResult.IsCompleted)
+            {
+                return WorkplaceResult.FromServerError<Vacancy>();
+            }
+            var teamResult = GetTeam(callerUsername, vacancyResult.Value.OwnerTeamId);
+            if (teamResult.HasError)
+            {
+                return WorkplaceResult.FromError<Vacancy>(teamResult.Error);
+            }
+            if (!teamResult.Value.Permissions[callerUsername].HasFlag(
+                    requiredPermissions))
+            {
+                return WorkplaceResult.FromError<Vacancy>(WorkplaceErrors.NoPermission);
+            }
+            return WorkplaceResult.FromValue(vacancyResult.Value);
         }
 
         public WorkplaceResult Invite(string callerUsername,
@@ -184,7 +298,8 @@ namespace HRwflow.Models
             {
                 return WorkplaceResult.FromServerError();
             }
-            if (!team.Permissions[callerUsername].HasFlag(TeamPermissions.Invite))
+            if (!team.Permissions[callerUsername].HasFlag(
+                TeamPermissions.Invite))
             {
                 return WorkplaceResult.FromError(WorkplaceErrors.NoPermission);
             }
@@ -262,6 +377,20 @@ namespace HRwflow.Models
             var permissions = teamResult.Value.Permissions;
             if (permissions.Count == 1)
             {
+                var selectionResult = _vacancies.Select(
+                    vacancy => vacancy.OwnerTeamId == teamId);
+                if (!selectionResult.IsCompleted)
+                {
+                    return WorkplaceResult.FromServerError();
+                }
+                var vacancies = selectionResult.Value.ToList();
+                foreach (var vacancy in vacancies)
+                {
+                    if (!_vacancies.Delete(vacancy.VacancyId).IsCompleted)
+                    {
+                        return WorkplaceResult.FromServerError();
+                    }
+                }
                 if (!_teams.Delete(teamId).IsCompleted)
                 {
                     return WorkplaceResult.FromServerError();
@@ -348,11 +477,10 @@ namespace HRwflow.Models
             {
                 return WorkplaceResult.FromServerError();
             }
-            var memberUsernames = new List<string>(team.Permissions.Keys);
             teamCertificate.ReportRelease();
             if (properties.Name != teamName)
             {
-                foreach (var username in memberUsernames)
+                foreach (var username in team.Permissions.Keys)
                 {
                     using var _ = _customerLocker.Acquire(username);
                     var infoResult = _customerInfos.Get(username);
@@ -368,9 +496,22 @@ namespace HRwflow.Models
         }
 
         public WorkplaceResult ModifyVacancyProperties(string callerUsername,
-            int teamId, int vacancyId, VacancyProperties vacancyProperties)
+            int vacancyId, VacancyProperties properties)
         {
-            throw new NotImplementedException();
+            using var vacancyCertificate = _vacancyLocker.Acquire(vacancyId);
+            var vacancyResult = GetVacancy(
+                callerUsername, vacancyId, TeamPermissions.ModifyVacancy);
+            if (vacancyResult.HasError)
+            {
+                return WorkplaceResult.FromError(vacancyResult.Error);
+            }
+            var vacancy = vacancyResult.Value;
+            vacancy.Properties = properties;
+            if (!_vacancies.Update(vacancyId, vacancy).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            return WorkplaceResult.Succeed();
         }
 
         private static void UpdatePermissonsWhenLeaving(
@@ -382,13 +523,15 @@ namespace HRwflow.Models
                 return;
             }
             permissions.Remove(leavingUsername);
-            if (!permissions.Values.Any(p => p.HasFlag(TeamPermissions.Director)))
+            if (!permissions.Values.Any(
+                p => p.HasFlag(TeamPermissions.Director)))
             {
-                bool promoteAll =
-                    !permissions.Values.Any(p => p.HasFlag(TeamPermissions.Manager));
+                bool promoteAll = !permissions.Values.Any(
+                    p => p.HasFlag(TeamPermissions.Manager));
                 foreach (var key in permissions.Keys)
                 {
-                    if (promoteAll || permissions[key].HasFlag(TeamPermissions.Manager))
+                    if (promoteAll || permissions[key].HasFlag(
+                        TeamPermissions.Manager))
                     {
                         permissions[key] |= TeamPermissions.Director;
                     }

@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using HRwflow.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,9 +22,14 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult CreateTeam()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
+            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: true))
             {
                 return errorActionResult;
+            }
+            if (WorkplaceLimits.TeamJoinLimit
+                <= CustomerInfo.JoinedTeamNames.Count)
+            {
+                return ShowError(WorkplaceErrors.JoinLimitExceeded);
             }
             var model = new EditTeamPropertiesVM();
             if (Request.Method.ToUpper() == "GET")
@@ -45,6 +52,90 @@ namespace HRwflow.Controllers
                     return ShowError(createResult.Error);
                 }
                 return RedirectAndInform($"/workplace/team?teamId={createResult.Value}",
+                    RedirectionModes.Success);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult CreateVacancy(int teamId)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            if (teamResult.HasError)
+            {
+                return ShowError(teamResult.Error);
+            }
+            var team = teamResult.Value;
+            if (!team.Permissions.TryGetValue(Username, out var permissions)
+                || !permissions.HasFlag(TeamPermissions.CreateVacancy))
+            {
+                return ShowError(WorkplaceErrors.NoPermission);
+            }
+            if (WorkplaceLimits.VacanciesMaxCount <= team.VacancyCount)
+            {
+                return ShowError(WorkplaceErrors.VacancyCountLimitExceeded);
+            }
+            var model = new EditVacancyPropertiesVM();
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                string title = Request.Form.GetValue("title");
+                var vacancyProperties = new VacancyProperties();
+                model.VacancyProperties = vacancyProperties;
+                model.TitleIsCorrect = vacancyProperties.TrySetTitle(title);
+                if (model.HasErrors)
+                {
+                    return View(model);
+                }
+                var createResult = _workplaceService.CreateVacancy(
+                    Username, teamId, vacancyProperties);
+                if (createResult.HasError)
+                {
+                    return ShowError(createResult.Error);
+                }
+                return RedirectAndInform($"/workplace/vacancy?vacancyId={createResult.Value}",
+                    RedirectionModes.Success);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult DeleteVacancy(int vacancyId)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var vacancyResult = _workplaceService.GetVacancy(Username,
+                vacancyId, TeamPermissions.DeleteVacancy);
+            if (vacancyResult.HasError)
+            {
+                return ShowError(vacancyResult.Error);
+            }
+            var model = new IdVM<int>(vacancyId);
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                var deletionResult = _workplaceService.DeleteVacancy(
+                    Username, vacancyId);
+                if (deletionResult.HasError)
+                {
+                    return ShowError(deletionResult.Error);
+                }
+                return RedirectAndInform(
+                    $"/workplace/vacancies?teamId={vacancyResult.Value.OwnerTeamId}",
                     RedirectionModes.Success);
             }
             return ShowError(ControllerErrors.RequestUnsupported);
@@ -86,7 +177,58 @@ namespace HRwflow.Controllers
                 {
                     model.TeamProperties = properties;
                     var modifyResult = _workplaceService.ModifyTeamProperties(
-                       Username, teamId, model.TeamProperties);
+                       Username, teamId, properties);
+                    if (modifyResult.HasError)
+                    {
+                        return ShowError(modifyResult.Error);
+                    }
+                }
+                return View(model);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult EditVacancy(int vacancyId)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var vacancyResult = _workplaceService.GetVacancy(
+                Username, vacancyId, TeamPermissions.ModifyVacancy);
+            if (vacancyResult.HasError)
+            {
+                return ShowError(vacancyResult.Error);
+            }
+            var vacancy = vacancyResult.Value;
+            var model = new EditVacancyPropertiesVM
+            {
+                VacancyId = vacancy.VacancyId,
+                VacancyProperties = vacancy.Properties,
+            };
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                var properties = model.VacancyProperties;
+                model.TitleIsCorrect = properties.TrySetTitle(
+                    Request.Form.GetValue("title"));
+                model.DescriptionIsCorrect = properties.TrySetDescription(
+                    Request.Form.GetValue("description"));
+                if (Enum.TryParse<VacancyStates>(Request.Form.GetValue(
+                    "vacancyState"), out var vacancyState))
+                {
+                    properties.State = vacancyState;
+                }
+                if (!properties.Equals(model.VacancyProperties))
+                {
+                    model.VacancyProperties = properties;
+                    var modifyResult = _workplaceService.ModifyVacancyProperties(
+                       Username, vacancyId, properties);
                     if (modifyResult.HasError)
                     {
                         return ShowError(modifyResult.Error);
@@ -166,6 +308,7 @@ namespace HRwflow.Controllers
             return RedirectAndInform("/account");
         }
 
+        [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Profile(int teamId, string username)
         {
@@ -199,11 +342,11 @@ namespace HRwflow.Controllers
                     return RedirectAndInform($"/workplace/team?teamId={teamId}",
                         RedirectionModes.Success);
                 }
-                if (!int.TryParse(Request.Form.GetValue("role"), out var roleInt))
+                if (!Enum.TryParse<TeamPermissions>(
+                    Request.Form.GetValue("role"), out var newRole))
                 {
                     return ShowError(WorkplaceErrors.ServerError);
                 }
-                var newRole = (TeamPermissions)roleInt;
                 var modifyResult = _workplaceService.ModifyRole(
                             Username, teamId, username, newRole);
                 if (modifyResult.HasError)
@@ -243,14 +386,128 @@ namespace HRwflow.Controllers
         [HttpGet]
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult TeamVacancies(int teamId)
+        public IActionResult Vacancies(int teamId, string creationTimeOffset,
+            string lastNoteTimeOffset, string vacancyStates)
         {
             if (!TryIdentifyCustomer(out var errorActionResult))
             {
                 return errorActionResult;
             }
-            // TODO
-            return ShowError(ControllerErrors.RequestUnsupported);
+            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            if (teamResult.HasError)
+            {
+                return ShowError(teamResult.Error);
+            }
+            var vacanciesResult = _workplaceService.GetVacancies(Username, teamId);
+            if (vacanciesResult.HasError)
+            {
+                return ShowError(vacanciesResult.Error);
+            }
+            var model = new VacancyListVM
+            {
+                AllVacancies = vacanciesResult.Value,
+                TeamId = teamResult.Value.TeamId,
+                TeamName = teamResult.Value.Properties.Name,
+            };
+            if (Enum.TryParse(creationTimeOffset, out TimeSpans timeOffset))
+            {
+                model.CreationTimeOffset = timeOffset;
+            }
+            if (Enum.TryParse(lastNoteTimeOffset, out timeOffset))
+            {
+                model.LastNoteTimeOffset = timeOffset;
+            }
+            if (vacancyStates is not null)
+            {
+                HashSet<VacancyStates> selectedStates = new();
+                foreach (var item in vacancyStates.Split(','))
+                {
+                    if (Enum.TryParse(item, out VacancyStates state))
+                    {
+                        selectedStates.Add(state);
+                    }
+                }
+                if (selectedStates.Count > 0)
+                {
+                    model.VacancyStates = selectedStates;
+                }
+            }
+            return View(model);
+        }
+
+        [HttpPost]
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Vacancies(int teamId)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            if (teamResult.HasError)
+            {
+                return ShowError(teamResult.Error);
+            }
+            var model = new VacancyListVM();
+            var creationTimeOffset = model.CreationTimeOffset;
+            var lastNoteTimeOffset = model.LastNoteTimeOffset;
+            if (Enum.TryParse(Request.Form.GetValue("creationTimeOffset"),
+                out TimeSpans offset))
+            {
+                creationTimeOffset = offset;
+            }
+            if (Enum.TryParse(
+                Request.Form.GetValue("lastNoteTimeOffset"), out offset))
+            {
+                lastNoteTimeOffset = offset;
+            }
+            HashSet<VacancyStates> selectedStates = new();
+            foreach (var vacancyState in Enum.GetValues<VacancyStates>())
+            {
+                if (Request.Form.GetValue($"vacancyState{vacancyState}")
+                    is not null)
+                {
+                    selectedStates.Add(vacancyState);
+                }
+            }
+            var resultSet = selectedStates.Count > 0
+                ? selectedStates : model.VacancyStates;
+            var vacancyStates = string.Join(',', resultSet);
+            var path = $"/workplace/vacancies?teamId={teamId}" +
+                $"&creationTimeOffset={creationTimeOffset}" +
+                $"&lastNoteTimeOffset={lastNoteTimeOffset}" +
+                $"&vacancyStates={vacancyStates}";
+            return RedirectAndInform(path);
+        }
+
+        [HttpGet]
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Vacancy(int vacancyId)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var vacancyResult = _workplaceService.GetVacancy(Username, vacancyId);
+            if (vacancyResult.HasError)
+            {
+                return ShowError(vacancyResult.Error);
+            }
+            var teamResult = _workplaceService.GetTeam(
+                Username, vacancyResult.Value.OwnerTeamId);
+            if (teamResult.HasError)
+            {
+                return ShowError(teamResult.Error);
+            }
+            var model = new VacancyVM
+            {
+                Team = teamResult.Value,
+                Vacancy = vacancyResult.Value,
+                Username = Username
+            };
+            return View(model);
         }
 
         private IActionResult ShowError(WorkplaceErrors error)

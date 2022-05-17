@@ -1,17 +1,17 @@
 ﻿@model IdVM<int>
 @{
-	ViewData["Title"] = "Leave Team";
+	ViewData["Title"] = "Delete Vacancy";
 }
 
-<p class="text-dark text-center mt-5 fw-bold">Выйти из группы?</p>
+<p class="text-dark text-center mt-5 fw-bold">Удалить вакансию?</p>
 
 <div class="container mt-4" align="center">
 	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
 		<form method="POST">
 			<button type="submit" class="btn btn-danger my-1" name="delete">
-				Да, выйти
+				Да, удалить
 			</button>
-			<a href="/workplace/team?teamId=@Model.Id" class="btn btn-success my-1">
+			<a href="/workplace/vacancy?vacancyId=@Model.Id" class="btn btn-success my-1">
 				Нет, вернуться
 			</a>
 		</form>

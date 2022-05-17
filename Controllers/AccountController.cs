@@ -68,6 +68,7 @@ namespace HRwflow.Controllers
         }
 
         [HttpGet]
+        [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Exit()
         {
@@ -76,6 +77,7 @@ namespace HRwflow.Controllers
         }
 
         [HttpGet]
+        [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult Main()
         {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace HRwflow.Models
 {
@@ -15,7 +16,8 @@ namespace HRwflow.Models
 
         TaskResult<Tkey> Insert(TValue value);
 
-        TaskResult<IEnumerable<TValue>> Select(Func<TValue, bool> selector);
+        TaskResult<IEnumerable<TValue>> Select(
+            Expression<Func<TValue, bool>> selector);
 
         TaskResult Update(Tkey key, TValue value);
     }

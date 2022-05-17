@@ -15,7 +15,7 @@
 	var roleDescriptions = new Dictionary<TeamPermissions, string>
 	{
 		[TeamPermissions.Observer] = "никаких активных действий",
-		[TeamPermissions.Commentator] = "комментирование вакансий",
+		[TeamPermissions.Commentator] = "добавление заметок к вакансиям",
 		[TeamPermissions.Editor] =
 			"дополнительно создание/удаление/редактирование вакансий",
 		[TeamPermissions.Manager] =
@@ -34,14 +34,15 @@
 	};
 }
 
-<div class="container" align="center">
-	<div class="navbar custom-navbar border-bottom">
-		<div class="container" align="center">
-			<div class="col-12 mt-3">
-				<p class="text-dark fw-bold">@($"{Model.TeamName} | {Model.Username}")</p>
-			</div>
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 mt-3">
+			<p class="text-dark fw-bold">@($"{Model.TeamName} | {Model.Username}")</p>
 		</div>
 	</div>
+</div>
+
+<div class="container" align="center">
 	@foreach(var role in allRoles){
 		if (Model.SubjectPermissions == role)
 		{
@@ -50,20 +51,22 @@
 					@($"Текущий уровень доступа: {roleNames[role]}")
 				</p>
 			</div>
+			break;
 		}
 	}
 	@if (Model.GetPossibleAppointments().Count() > 1)
 	{
 		<div class="col-10 mt-5" align="center">
 			<form method="POST">
-				<div style="display: inline-block;" align="left">
+				<div class="d-inline-block" align="left">
 					@foreach(var role in Model.GetPossibleAppointments())
 					{
-						var roleValue = ((int)role).ToString();
-						var buttonId = $"{role.ToString().ToLower()}Radio";
+						var roleValue = role.ToString();
+						var buttonId = $"{role}Radio";
 						<div class="mt-3">
 							<input class="form-check-input" type="radio"
-									name="role" id="@buttonId" value="@roleValue">
+								name="role" id="@buttonId" value="@roleValue"
+								@(Model.SubjectPermissions == role ? "checked" : "")>
 							<label class="form-check-label" for="@buttonId">
 								@($"{roleNames[role]}: {roleDescriptions[role]}")
 							</label>
@@ -71,11 +74,11 @@
 					}
 				</div>
 				<div class="mt-5">
-					<button type="submit" class="btn btn-primary custom-btn">
+					<button type="submit" class="btn btn-primary my-1">
 						Изменить уровень доступа
 					</button>
 					@if (Model.CanKick){
-					<button type="submit" class="btn btn-danger custom-btn" name="kick" value="true">
+					<button type="submit" class="btn btn-danger my-1" name="kick" value="true">
 						Исключить из группы
 					</button>
 					}

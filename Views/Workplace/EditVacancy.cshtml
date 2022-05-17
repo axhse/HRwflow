@@ -1,0 +1,71 @@
+﻿@model EditVacancyPropertiesVM
+@{
+	ViewData["Title"] = "Edit Vacancy";
+	var vacancyStateNames = new Dictionary<VacancyStates, string>
+	{
+		[VacancyStates.Active] = "Активная",
+		[VacancyStates.Completed] = "Завершенная"
+	};
+}
+
+<div class="navbar custom-navbar border-bottom">
+	<div class="container" align="center">
+		<div class="col-12 mt-3">
+			<p class="text-dark fw-bold">Редактирование вакансии</p>
+		</div>
+	</div>
+</div>
+
+<div class="container mt-5" align="center">
+	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
+		<form method="POST">
+			<div class="form-floating">
+				<input class="form-control" id="titleInput" name="title"
+					placeholder="Название" value="@Model.VacancyProperties.Title">
+				<label for="titleInput">Названиe</label>
+				@if (!Model.TitleIsCorrect)
+				{
+					<p class="text-info">
+						Название должно иметь длину от 1 до 100 символов.
+					</p>
+				}
+			</div>
+			<div class="form-floating mt-4">
+				<input class="form-control" id="descriptionInput" 
+					name="description" placeholder="Детали"
+					value="@Model.VacancyProperties.Description">
+				<label for="descriptionInput">Детали</label>
+				@if (!Model.DescriptionIsCorrect)
+				{
+					<p class="text-info">
+						Описание должно иметь длину до 1000 символов.
+					</p>
+				}
+				<div class="d-inline-block mt-4">
+					@foreach(var state in Enum.GetValues<VacancyStates>())
+					{
+						var stateValue = state.ToString();
+						var buttonId = $"{state}Radio";
+						<input class="form-check-input ms-3" type="radio"
+							name="vacancyState" id="@buttonId" value="@stateValue"
+							@(Model.VacancyProperties.State == state ? "checked" : "")>
+						<label class="form-check-label" for="@buttonId">
+							@vacancyStateNames[state]
+						</label>
+						
+					}
+				</div>
+			</div>
+			<div class="mt-5">
+				<button type="submit" class="btn btn-success">
+					Сохранить
+				</button>
+			</div>
+		</form>
+	</div>
+	<div class="mt-4">
+		<a class="link-secondary" href="/workplace/vacancy?vacancyId=@Model.VacancyId">
+			Вернуться
+		</a>
+	</div>
+</div>
