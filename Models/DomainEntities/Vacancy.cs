@@ -117,10 +117,15 @@ namespace HRwflow.Models
     {
         public Dictionary<string, VacancyNote> Notes = new();
         public DateTime CreationTime { get; } = DateTime.UtcNow;
-        public DateTime LastNoteTime { get; set; } = DateTime.UtcNow;
+        public DateTime LastNoteUpdateTime { get; set; } = DateTime.UtcNow;
         public int OwnerTeamId { get; set; }
         public VacancyProperties Properties { get; set; } = new();
         public int VacancyId { get; set; }
+
+        public void ReportNoteUpdated()
+        {
+            LastNoteUpdateTime = DateTime.UtcNow;
+        }
     }
 
     public class VacancyNote

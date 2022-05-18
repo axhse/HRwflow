@@ -35,7 +35,7 @@ namespace HRwflow.Models
                 bool selector(Vacancy vacancy)
                     => (DateTime.UtcNow - vacancy.CreationTime).TotalSeconds
                     < (long)CreationTimeOffset
-                    && (DateTime.UtcNow - vacancy.LastNoteTime).TotalSeconds
+                    && (DateTime.UtcNow - vacancy.LastNoteUpdateTime).TotalSeconds
                     < (long)LastNoteTimeOffset
                     && VacancyStates.Contains(vacancy.Properties.State);
                 return from vacancy in AllVacancies

@@ -97,9 +97,11 @@
                 _ => null
             };
             <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xxl-2 my-2">
-                <a class="vacancy-link" href="/workplace/vacancy?vacancyId=@vacancy.VacancyId">
+                <a class="text-decoration-none"
+						href="/workplace/vacancy?vacancyId=@vacancy.VacancyId">
                     <div class="card border-@colorName h-100">
-                        <div class="card-body text-@colorName vertically-centered-div">
+                        <div class="card-body text-@colorName
+								vertically-filled-div justify-content-center">
                             <h5 class="card-title">
 								@vacancy.Properties.Title
 							</h5>

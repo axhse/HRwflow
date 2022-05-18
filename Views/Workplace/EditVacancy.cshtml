@@ -19,10 +19,10 @@
 <div class="container mt-5" align="center">
 	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
 		<form method="POST">
-			<div class="form-floating">
+			<div class="form-group" align="left">
+				<label for="titleInput" class="form-label">Названиe</label>
 				<input class="form-control" id="titleInput" name="title"
-					placeholder="Название" value="@Model.VacancyProperties.Title">
-				<label for="titleInput">Названиe</label>
+					value="@Model.VacancyProperties.Title">
 				@if (!Model.TitleIsCorrect)
 				{
 					<p class="text-info">
@@ -30,18 +30,22 @@
 					</p>
 				}
 			</div>
-			<div class="form-floating mt-4">
-				<input class="form-control" id="descriptionInput" 
-					name="description" placeholder="Детали"
-					value="@Model.VacancyProperties.Description">
-				<label for="descriptionInput">Детали</label>
+			<div class="form-group mt-4" align="left">
+				<label for="descriptionInput" class="form-label">
+					Дополнительная информация
+				</label>
+				<textarea class="form-control" id="descriptionInput"
+					name="description" rows="6"
+					>@Model.VacancyProperties.Description</textarea>
 				@if (!Model.DescriptionIsCorrect)
 				{
 					<p class="text-info">
 						Описание должно иметь длину до 1000 символов.
 					</p>
 				}
-				<div class="d-inline-block mt-4">
+			</div>
+			<div class="form-group mt-4">
+				<div class="d-inline-block">
 					@foreach(var state in Enum.GetValues<VacancyStates>())
 					{
 						var stateValue = state.ToString();

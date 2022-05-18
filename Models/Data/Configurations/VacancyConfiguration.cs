@@ -17,8 +17,8 @@ namespace HRwflow.Models.Data
             builder.Property(vacancy => vacancy.CreationTime).IsRequired();
             builder.Property(vacancy => vacancy.CreationTime)
                    .HasConversion(new DateTimeConverter());
-            builder.Property(vacancy => vacancy.LastNoteTime).IsRequired();
-            builder.Property(vacancy => vacancy.LastNoteTime)
+            builder.Property(vacancy => vacancy.LastNoteUpdateTime).IsRequired();
+            builder.Property(vacancy => vacancy.LastNoteUpdateTime)
                    .HasConversion(new DateTimeConverter());
             builder.Property(vacancy => vacancy.Properties).IsRequired();
             builder.Property(vacancy => vacancy.Properties)

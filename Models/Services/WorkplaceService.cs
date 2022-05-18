@@ -172,6 +172,26 @@ namespace HRwflow.Models
             return WorkplaceResult.Succeed();
         }
 
+        public WorkplaceResult DeleteVacancyNote(string callerUsername,
+            int vacancyId, string noteOwnerUsername)
+        {
+            using var vacancyCertificate = _vacancyLocker.Acquire(vacancyId);
+            var permissions = callerUsername == noteOwnerUsername
+                ? TeamPermissions.CommentVacancy : TeamPermissions.ManageVacancyNotes;
+            var vacancyResult = GetVacancy(
+                callerUsername, vacancyId, permissions);
+            if (vacancyResult.HasError)
+            {
+                return WorkplaceResult.FromError(vacancyResult.Error);
+            }
+            vacancyResult.Value.Notes.Remove(noteOwnerUsername);
+            if (!_vacancies.Update(vacancyId, vacancyResult.Value).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            return WorkplaceResult.Succeed();
+        }
+
         public WorkplaceResult<Team> GetTeam(string callerUsername, int teamId)
         {
             if (callerUsername is null)
@@ -495,8 +515,27 @@ namespace HRwflow.Models
             return WorkplaceResult.Succeed();
         }
 
+        public WorkplaceResult ModifyVacancyNote(string callerUsername,
+            int vacancyId, VacancyNote note)
+        {
+            using var vacancyCertificate = _vacancyLocker.Acquire(vacancyId);
+            var vacancyResult = GetVacancy(
+                callerUsername, vacancyId, TeamPermissions.CommentVacancy);
+            if (vacancyResult.HasError)
+            {
+                return WorkplaceResult.FromError(vacancyResult.Error);
+            }
+            vacancyResult.Value.Notes[callerUsername] = note;
+            vacancyResult.Value.ReportNoteUpdated();
+            if (!_vacancies.Update(vacancyId, vacancyResult.Value).IsCompleted)
+            {
+                return WorkplaceResult.FromServerError();
+            }
+            return WorkplaceResult.Succeed();
+        }
+
         public WorkplaceResult ModifyVacancyProperties(string callerUsername,
-            int vacancyId, VacancyProperties properties)
+                    int vacancyId, VacancyProperties properties)
         {
             using var vacancyCertificate = _vacancyLocker.Acquire(vacancyId);
             var vacancyResult = GetVacancy(

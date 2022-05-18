@@ -310,6 +310,79 @@ namespace HRwflow.Controllers
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Note(int vacancyId, string username)
+        {
+            if (!TryIdentifyCustomer(out var errorActionResult))
+            {
+                return errorActionResult;
+            }
+            var vacancyResult = _workplaceService.GetVacancy(
+               Username, vacancyId);
+            if (vacancyResult.HasError)
+            {
+                return ShowError(vacancyResult.Error);
+            }
+            var vacancy = vacancyResult.Value;
+            var teamResult = _workplaceService.GetTeam(
+               Username, vacancy.OwnerTeamId);
+            if (teamResult.HasError)
+            {
+                return ShowError(teamResult.Error);
+            }
+            var permissions = teamResult.Value.Permissions[Username];
+            var model = new EditVacancyNoteVM
+            {
+                VacancyId = vacancy.VacancyId,
+                CanEdit = Username == username
+                    && permissions.HasFlag(TeamPermissions.CommentVacancy),
+                CanDelete = permissions.HasFlag(TeamPermissions.ManageVacancyNotes)
+            };
+            if (!vacancy.Notes.TryGetValue(username, out var note))
+            {
+                if (!model.CanEdit)
+                {
+                    return ShowError(WorkplaceErrors.ResourceNotFound);
+                }
+                note = new VacancyNote();
+            }
+            model.Note = note;
+            if (Request.Method.ToUpper() == "GET")
+            {
+                return View(model);
+            }
+            if (Request.Method.ToUpper() == "POST")
+            {
+                var action = Request.Form.GetValue("submit");
+                if (action == "delete")
+                {
+                    var deletionResult = _workplaceService.DeleteVacancyNote(
+                        Username, vacancyId, username);
+                    if (deletionResult.HasError)
+                    {
+                        return ShowError(deletionResult.Error);
+                    }
+                    return RedirectAndInform(
+                        $"/workplace/vacancy?vacancyId={vacancyId}",
+                        RedirectionModes.Success);
+                }
+                var text = Request.Form.GetValue("text");
+                model.TextIsCorrect = note.TrySetText(text);
+                if (!model.HasErrors)
+                {
+                    var updateResult = _workplaceService.ModifyVacancyNote(
+                        Username, vacancyId, model.Note);
+                    if (updateResult.HasError)
+                    {
+                        return ShowError(updateResult.Error);
+                    }
+                }
+                return View(model);
+            }
+            return ShowError(ControllerErrors.RequestUnsupported);
+        }
+
+        [RequireHttps]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Profile(int teamId, string username)
         {
             if (!TryIdentifyCustomer(out var errorActionResult))

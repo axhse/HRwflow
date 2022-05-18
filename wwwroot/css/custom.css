@@ -59,12 +59,7 @@
     margin: 0.5rem 1rem;
 }
 
-.vacancy-link {
-    text-decoration: none;
-}
-
-.vertically-centered-div {
+.vertically-filled-div {
     display: flex;
-    justify-content: center;
     flex-direction: column;
 }

@@ -2,12 +2,15 @@
 @{
 	ViewData["Title"] = "Vacancy";
 	var vacancy = Model.Vacancy;
-    var stateText = vacancy.Properties.State switch
-    {
-        VacancyStates.Active => "Активна",
-        VacancyStates.Completed => "Завершена",
-        _ => null
-    };
+	var stateText = vacancy.Properties.State switch
+	{
+		VacancyStates.Active => "Активна",
+		VacancyStates.Completed => "Завершена",
+		_ => null
+	};
+	var sortedNotes = Model.Vacancy.Notes.ToList();
+	sortedNotes.Sort((first, second) => first.Value.LastChangeTime
+		< second.Value.LastChangeTime ? 1 : -1);
 }
 
 <div class="navbar custom-navbar border-bottom">
@@ -19,11 +22,12 @@
 </div>
 
 <div class="container mt-5" align="center">
-	<div class="col-12 col-md-10 col-lg-8 col-xl-6">
+	<div class="col-12 col-md-10 col-lg-8 col-xl-6 col-xxl-5">
         <div class="card border-dark">
             <div class="card-body text-dark">
                 <h5 class="card-title mt-2">@vacancy.Properties.Title</h5>
-                <p class="card-text mt-4 mb-3">@vacancy.Properties.Description</p>
+                <pre class="card-text text-start mt-4 mb-3"
+				>@vacancy.Properties.Description</pre>
             </div>
             <div class="card-footer bg-transparent text-secondary">
                 <p class="my-2">
@@ -34,6 +38,15 @@
         </div>
 
         <div class="mt-5">
+			@if(Model.Team.HasMember(Model.Username)
+				&& Model.Team.Permissions[Model.Username].HasFlag(
+					TeamPermissions.CommentVacancy))
+			{
+				<a class="btn btn-success my-1"
+						href="/workplace/note?vacancyId=@Model.Vacancy.VacancyId&username=@Model.Username">
+					Моя заметка
+				</a>
+			}
 			@if(Model.Team.HasMember(Model.Username)
 				&& Model.Team.Permissions[Model.Username].HasFlag(
 					TeamPermissions.ModifyVacancy))
@@ -53,6 +66,22 @@
 				</a>
 			}
 		</div>
+    </div>
+	<div class="row mt-5">
+        @foreach (var (username, note) in sortedNotes)
+        {
+            <div class="col-12 col-sm-6 col-lg-4 col-xxl-3 mb-5">
+                <a class="link-dark text-decoration-none"
+						href="/workplace/note?vacancyId=@vacancy.VacancyId&username=@username">
+					<div class="card border-dark h-100">
+						<div class="card-header">@username</div>
+						<div class="card-body text-dark vertically-filled-div text-start">
+							<pre class="card-text">@note.Text</pre>
+						</div>
+					</div>
+				</a>
+            </div>
+        }
     </div>
 
 	<div class="mt-5">
