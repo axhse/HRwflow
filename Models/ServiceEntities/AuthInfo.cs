@@ -12,5 +12,8 @@ namespace HRwflow.Models
         {
             return Encoding.ASCII.GetString(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
         }
+
+        public static bool IsPasswordCorrect(string password) => password != null
+                && 8 <= password.Length && password.Length <= 40;
     }
 }

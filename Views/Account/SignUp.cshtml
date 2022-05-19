@@ -22,11 +22,14 @@
 		<form method="POST">
 			<div>
 				<label for="usernameInput" class="form-label">Логин</label>
-				<input type="text" class="form-control text-center" id="usernameInput" name="username" value="@Model.DefaultUsername">
+				<input type="text" class="form-control text-center" id="usernameInput"
+						name="username" value="@Model.DefaultUsername">
 				@if (!Model.IsUsernameCorrect)
 				{
-					<p class="text-info">Логин должен состоять из букв латинского алфавита 
-						и цифр, иметь длину от 6 до 20 символов.</p>
+					<p class="text-info">
+						Логин должен состоять из букв латинского алфавита 
+						и цифр, иметь длину от 6 до 20 символов.
+					</p>
 				}
 				@if (!Model.IsUsernameUnused && Model.IsUsernameCorrect)
 				{
@@ -35,10 +38,13 @@
 			</div>
 			<div class="mt-3">
 				<label for="passwordInput" class="form-label">Пароль</label>
-				<input type="password" class="form-control text-center" id="passwordInput" name="password">
+				<input type="password" class="form-control text-center"
+						id="passwordInput" name="password">
 				@if (!Model.IsPasswordCorrect)
 				{
-					<p class="text-info">Пароль должен иметь длину от 8 до 40 символов.</p>
+					<p class="text-info">
+						Пароль должен иметь длину от 8 до 40 символов.
+					</p>
 				}
 			</div>
 			<div class="mt-3">
@@ -50,7 +56,9 @@
 				}
 			</div>
 			<div class="mt-4">
-				<button type="submit" class="btn btn-primary">Создать аккаунт</button>
+				<button type="submit" class="btn btn-primary">
+					Создать аккаунт
+				</button>
 			</div>
 		</form>
 	</div>

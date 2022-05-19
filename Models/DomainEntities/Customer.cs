@@ -38,13 +38,13 @@ namespace HRwflow.Models
             return name;
         }
 
-        public static bool NameIsCorrect(string name) => name is null
+        public static bool IsNameCorrect(string name) => name is null
             || Regex.IsMatch(name, $"^[{NameCorrectSymbols}]{{0,50}}$");
 
         public bool TrySetName(string name)
         {
             name = FormatName(name);
-            if (!NameIsCorrect(name))
+            if (!IsNameCorrect(name))
             {
                 return false;
             }
@@ -74,16 +74,13 @@ namespace HRwflow.Models
             return username;
         }
 
-        public static bool PasswordIsCorrect(string password) => password != null
-                && 8 <= password.Length && password.Length <= 40;
-
-        public static bool UsernameIsCorrect(string username)
+        public static bool IsUsernameCorrect(string username)
             => username != null && Regex.IsMatch(username, $"^[a-z0-9]{{6,20}}$");
 
         public bool TrySetUsername(string username)
         {
             username = FormatUsername(username);
-            if (!UsernameIsCorrect(username))
+            if (!IsUsernameCorrect(username))
             {
                 return false;
             }

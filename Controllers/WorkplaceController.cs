@@ -41,7 +41,7 @@ namespace HRwflow.Controllers
                 string name = Request.Form.GetValue("name");
                 var teamProperties = new TeamProperties();
                 model.TeamProperties = teamProperties;
-                model.NameIsCorrect = teamProperties.TrySetName(name);
+                model.IsNameCorrect = teamProperties.TrySetName(name);
                 if (model.HasErrors)
                 {
                     return View(model);
@@ -90,7 +90,7 @@ namespace HRwflow.Controllers
                 string title = Request.Form.GetValue("title");
                 var vacancyProperties = new VacancyProperties();
                 model.VacancyProperties = vacancyProperties;
-                model.TitleIsCorrect = vacancyProperties.TrySetTitle(title);
+                model.IsTitleCorrect = vacancyProperties.TrySetTitle(title);
                 if (model.HasErrors)
                 {
                     return View(model);
@@ -172,7 +172,7 @@ namespace HRwflow.Controllers
             {
                 string name = Request.Form.GetValue("name");
                 var properties = model.TeamProperties;
-                model.NameIsCorrect = properties.TrySetName(name);
+                model.IsNameCorrect = properties.TrySetName(name);
                 if (!properties.Equals(model.TeamProperties))
                 {
                     model.TeamProperties = properties;
@@ -215,9 +215,9 @@ namespace HRwflow.Controllers
             if (Request.Method.ToUpper() == "POST")
             {
                 var properties = model.VacancyProperties;
-                model.TitleIsCorrect = properties.TrySetTitle(
+                model.IsTitleCorrect = properties.TrySetTitle(
                     Request.Form.GetValue("title"));
-                model.DescriptionIsCorrect = properties.TrySetDescription(
+                model.IsDescriptionCorrect = properties.TrySetDescription(
                     Request.Form.GetValue("description"));
                 if (Enum.TryParse<VacancyStates>(Request.Form.GetValue(
                     "vacancyState"), out var vacancyState))
@@ -366,7 +366,7 @@ namespace HRwflow.Controllers
                         RedirectionModes.Success);
                 }
                 var text = Request.Form.GetValue("text");
-                model.TextIsCorrect = note.TrySetText(text);
+                model.IsTextCorrect = note.TrySetText(text);
                 if (!model.HasErrors)
                 {
                     var updateResult = _workplaceService.ModifyVacancyNote(

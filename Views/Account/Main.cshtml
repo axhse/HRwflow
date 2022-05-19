@@ -7,13 +7,22 @@
     <div class="container" align="center">
         <div class="col-4 col-sm-3 col-xl-2">
             <div class="btn-group">
-                <button type="button" class="btn btn-secondary dropdown-toggle fw-bold" data-bs-toggle="dropdown" aria-expanded="false">
+                <button type="button" class="btn btn-secondary dropdown-toggle fw-bold"
+                        data-bs-toggle="dropdown" aria-expanded="false">
                     ☰
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/account/settings">Настройки</a></li>
+                    <li>
+                        <a class="dropdown-item" href="/account/settings">
+                            Настройки
+                        </a>
+                    </li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="text-danger dropdown-item" href="/account/exit">Выйти</a></li>
+                    <li>
+                        <a class="text-danger dropdown-item" href="/account/exit">
+                            Выйти
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -31,7 +40,9 @@
         @foreach (var keyValuePair in Model.CustomerInfo.JoinedTeamNames)
         {
 	        <a class="btn btn-light btn-lg list-group-item-primary team-btn"
-                href="/workplace/team?teamId=@keyValuePair.Key">@keyValuePair.Value</a>
+                href="/workplace/team?teamId=@keyValuePair.Key">
+                @keyValuePair.Value
+            </a>
         }
 	    <a class="btn btn-light btn-lg list-group-item-success team-btn fw-bold
             create-team-btn" href="/workplace/createteam">+</a>

@@ -7,13 +7,22 @@
     <div class="container" align="center">
         <div class="col-4 col-sm-3 col-xl-2">
             <div class="btn-group">
-                <button type="button" class="btn btn-secondary dropdown-toggle fw-bold" data-bs-toggle="dropdown" aria-expanded="false">
+                <button type="button" class="btn btn-secondary dropdown-toggle fw-bold"
+						data-bs-toggle="dropdown" aria-expanded="false">
                     ☰
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/account">Главная</a></li>
+                    <li>
+						<a class="dropdown-item" href="/account">
+							Главная
+						</a>
+					</li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="text-danger dropdown-item" href="/account/exit">Выйти</a></li>
+                    <li>
+						<a class="text-danger dropdown-item" href="/account/exit">
+							Выйти
+						</a>
+					</li>
                 </ul>
             </div>
         </div>
@@ -28,20 +37,55 @@
 	<div class="col-10 col-sm-7 col-md-6 col-lg-5 col-xl-4">
 		<form method="POST">
 			<div class="form-floating">
-				<input class="form-control" id="nameInput" name="name" placeholder="Имя" value="@Model.Customer.Properties.Name">
+				<input class="form-control" id="nameInput" name="name"
+					placeholder="Имя" value="@Model.Customer.Properties.Name">
 				<label for="nameInput">Имя</label>
-				@if (!Model.NameIsCorrect)
+				@if (!Model.IsNameCorrect)
 				{
-					<p class="text-info">Имя должно состоять из русских или английских букв, 
-						иметь длину до 50 символов. Можно использовать пробел и дефис.</p>
+					<p class="text-info">
+						Имя должно состоять из русских или английских букв, 
+						иметь длину до 50 символов.
+						Можно использовать пробел и дефис.
+					</p>
 				}
 			</div>
+			<div class="mt-5">
+				<p class="text-secondary">Изменение пароля</p>
+			</div>
 			<div class="mt-4">
-				<button type="submit" class="btn btn-success">Сохранить</button>
+				<label for="newPasswordInput" class="form-label">
+					Новый пароль
+				</label>
+				<input type="password" class="form-control text-center"
+						id="newPasswordInput" name="newPassword">
+				@if (!Model.IsPasswordCorrect)
+				{
+					<p class="text-info">
+						Пароль должен иметь длину от 8 до 40 символов.
+					</p>
+				}
+			</div>
+			<div class="mt-3">
+				<label for="passwordConfirmationInput" class="form-label">
+					Повтор пароля
+				</label>
+				<input type="password" class="form-control text-center"
+						id="passwordConfirmationInput" name="passwordConfirmation">
+				@if (!Model.IsPasswordConfirmationCorrect)
+				{
+					<p class="text-info">Пароли должны совпадать.</p>
+				}
+			</div>
+			<div class="mt-5">
+				<button type="submit" class="btn btn-success">
+					Сохранить
+				</button>
 			</div>
 		</form>
-		<div class="settings-delete-link">
-			<a href="/account/delete" class="link-danger">Удалить аккаунт</a>
+		<div class="mt-5">
+			<a href="/account/delete" class="link-danger">
+				Удалить аккаунт
+			</a>
 		</div>
 	</div>
 </div>

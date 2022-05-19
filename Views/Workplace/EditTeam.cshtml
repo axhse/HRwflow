@@ -18,7 +18,7 @@
 				<input class="form-control" id="nameInput" name="name"
 					placeholder="Название" value="@Model.TeamProperties.Name">
 				<label for="nameInput">Название</label>
-				@if (!Model.NameIsCorrect)
+				@if (!Model.IsNameCorrect)
 				{
 					<p class="text-info">
 						Название должно иметь длину от 2 до 40 символов.

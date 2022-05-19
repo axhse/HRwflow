@@ -19,7 +19,7 @@
 					Название группы
 				</label>
 				<input type="text" class="form-control text-center" id="nameInput" name="name">
-				@if (!Model.NameIsCorrect)
+				@if (!Model.IsNameCorrect)
 				{
 					<p class="text-info">
 						Название должно иметь длину от 2 до 40 символов.

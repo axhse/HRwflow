@@ -28,13 +28,13 @@ namespace HRwflow.Models
             return name;
         }
 
-        public static bool NameIsCorrect(string name)
+        public static bool IsNameCorrect(string name)
             => name is not null && 2 <= name.Length && name.Length <= 40;
 
         public bool TrySetName(string name)
         {
             name = FormatName(name);
-            if (!NameIsCorrect(name))
+            if (!IsNameCorrect(name))
             {
                 return false;
             }

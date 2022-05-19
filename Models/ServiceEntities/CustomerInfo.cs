@@ -21,7 +21,7 @@ namespace HRwflow.Models
             get => _username;
             set
             {
-                if (Customer.UsernameIsCorrect(value))
+                if (Customer.IsUsernameCorrect(value))
                 {
                     _username = value;
                 }

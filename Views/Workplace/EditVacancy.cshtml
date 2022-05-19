@@ -23,7 +23,7 @@
 				<label for="titleInput" class="form-label">Названиe</label>
 				<input class="form-control" id="titleInput" name="title"
 					value="@Model.VacancyProperties.Title">
-				@if (!Model.TitleIsCorrect)
+				@if (!Model.IsTitleCorrect)
 				{
 					<p class="text-info">
 						Название должно иметь длину от 1 до 100 символов.
@@ -37,7 +37,7 @@
 				<textarea class="form-control" id="descriptionInput"
 					name="description" rows="6"
 					>@Model.VacancyProperties.Description</textarea>
-				@if (!Model.DescriptionIsCorrect)
+				@if (!Model.IsDescriptionCorrect)
 				{
 					<p class="text-info">
 						Описание должно иметь длину до 1000 символов.
@@ -68,7 +68,8 @@
 		</form>
 	</div>
 	<div class="mt-4">
-		<a class="link-secondary" href="/workplace/vacancy?vacancyId=@Model.VacancyId">
+		<a class="link-secondary" 
+				href="/workplace/vacancy?vacancyId=@Model.VacancyId">
 			Вернуться
 		</a>
 	</div>

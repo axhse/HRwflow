@@ -112,11 +112,24 @@ namespace HRwflow.Controllers
             if (Request.Method.ToUpper() == "POST")
             {
                 var properties = Customer.Properties;
-                model.NameIsCorrect = properties.TrySetName(Request.Form.GetValue("name"));
+                model.IsNameCorrect = properties.TrySetName(Request.Form.GetValue("name"));
                 if (!properties.Equals(Customer.Properties))
                 {
                     Customer.Properties = properties;
                     if (!_customers.Update(Username, Customer).IsCompleted)
+                    {
+                        return ShowError(ControllerErrors.OperationFaulted);
+                    }
+                }
+                var password = Request.Form.GetValue("newPassword");
+                model.IsPasswordCorrect = AuthInfo.IsPasswordCorrect(password);
+                model.IsPasswordConfirmationCorrect =
+                    password == Request.Form.GetValue("passwordConfirmation");
+                if (model.IsPasswordCorrect
+                    && model.IsPasswordConfirmationCorrect)
+                {
+                    if (!_authService.UpdatePassword(
+                        Username, password).IsCompleted)
                     {
                         return ShowError(ControllerErrors.OperationFaulted);
                     }
@@ -175,7 +188,14 @@ namespace HRwflow.Controllers
                     if (signInResult.Value)
                     {
                         HttpContext.Session.SetString("Username", username);
-                        return RedirectMain(RedirectionModes.Success);
+
+                        if (!Request.Cookies.TryGetValue("RequestedPath",
+                            out string path))
+                        {
+                            path = "/account";
+                        }
+                        Response.Cookies.Delete("RequestedPath");
+                        return RedirectAndInform(path, RedirectionModes.Success);
                     }
                     model.IsPasswordValid = false;
                 }
@@ -208,8 +228,8 @@ namespace HRwflow.Controllers
                 string passwordConfirmation = Request.Form.GetValue("passwordConfirmation");
                 username = Customer.FormatUsername(username);
                 model.DefaultUsername = username;
-                model.IsUsernameCorrect = Customer.UsernameIsCorrect(username);
-                model.IsPasswordCorrect = Customer.PasswordIsCorrect(password);
+                model.IsUsernameCorrect = Customer.IsUsernameCorrect(username);
+                model.IsPasswordCorrect = AuthInfo.IsPasswordCorrect(password);
                 model.IsPasswordConfirmationCorrect = password == passwordConfirmation;
                 if (model.IsUsernameCorrect)
                 {

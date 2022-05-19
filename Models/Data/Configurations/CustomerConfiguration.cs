@@ -10,7 +10,7 @@ namespace HRwflow.Models.Data
             builder.HasKey(customer => customer.Username);
             builder.HasIndex(customer => customer.Username).IsUnique();
             builder.Property(customer => customer.Username).IsRequired();
-            builder.Property(customer => customer.Username).ValueGeneratedOnAdd();
+            builder.Property(customer => customer.Username).ValueGeneratedNever();
             builder.Property(customer => customer.Username).HasMaxLength(20);
             builder.Property(customer => customer.Properties).IsRequired();
             // Current Length +- 113;

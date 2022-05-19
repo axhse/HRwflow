@@ -11,7 +11,7 @@ namespace HRwflow.Models.Data
             builder.HasKey(info => info.Username);
             builder.HasIndex(info => info.Username).IsUnique();
             builder.Property(info => info.Username).IsRequired();
-            builder.Property(info => info.Username).ValueGeneratedOnAdd();
+            builder.Property(info => info.Username).ValueGeneratedNever();
             builder.Property(info => info.Username).HasMaxLength(20);
             builder.Property(info => info.AccountState).IsRequired();
             builder.Property(info => info.JoinedTeamNames).IsRequired();

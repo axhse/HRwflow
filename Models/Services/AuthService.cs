@@ -25,8 +25,8 @@
 
         public TaskResult<bool> SignIn(string username, string password)
         {
-            if (!Customer.UsernameIsCorrect(username)
-                || !Customer.PasswordIsCorrect(password))
+            if (!Customer.IsUsernameCorrect(username)
+                || !AuthInfo.IsPasswordCorrect(password))
             {
                 return TaskResult.FromValue(false);
             }
@@ -41,8 +41,8 @@
 
         public TaskResult SignUp(string username, string password)
         {
-            if (!Customer.UsernameIsCorrect(username)
-                || !Customer.PasswordIsCorrect(password))
+            if (!Customer.IsUsernameCorrect(username)
+                || !AuthInfo.IsPasswordCorrect(password))
             {
                 return TaskResult.Uncompleted();
             }
@@ -56,8 +56,8 @@
 
         public TaskResult UpdatePassword(string username, string password)
         {
-            if (!Customer.UsernameIsCorrect(username)
-                || !Customer.PasswordIsCorrect(password))
+            if (!Customer.IsUsernameCorrect(username)
+                || !AuthInfo.IsPasswordCorrect(password))
             {
                 return TaskResult.Uncompleted();
             }
@@ -66,12 +66,8 @@
             {
                 return TaskResult.Uncompleted();
             }
-            var certificate = new AuthInfo
-            {
-                Username = username,
-                PasswordHash = AuthInfo.CalculateHash(password)
-            };
-            return _authInfos.Update(username, certificate);
+            result.Value.PasswordHash = AuthInfo.CalculateHash(password);
+            return _authInfos.Update(username, result.Value);
         }
     }
 }

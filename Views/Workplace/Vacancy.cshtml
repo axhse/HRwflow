@@ -8,7 +8,8 @@
 		VacancyStates.Completed => "Завершена",
 		_ => null
 	};
-	var sortedNotes = Model.Vacancy.Notes.ToList();
+	var sortedNotes = Model.Vacancy.Notes.Where(pair
+		=> pair.Value.Text != string.Empty).ToList();
 	sortedNotes.Sort((first, second) => first.Value.LastChangeTime
 		< second.Value.LastChangeTime ? 1 : -1);
 }

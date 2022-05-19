@@ -18,8 +18,9 @@
 				<label for="titleInput" class="form-label">
 					Название вакансии
 				</label>
-				<input type="text" class="form-control text-center" id="titleInput" name="title">
-				@if (!Model.TitleIsCorrect)
+				<input type="text" class="form-control text-center"
+					id="titleInput" name="title">
+				@if (!Model.IsTitleCorrect)
 				{
 					<p class="text-info">
 						Название должно иметь длину от 1 до 100 символов.

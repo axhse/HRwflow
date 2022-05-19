@@ -19,7 +19,7 @@
 				<div class="form-group">
 				<textarea class="form-control" id="textInput"
 					name="text" rows="8">@Model.Note.Text</textarea>
-					@if (!Model.TextIsCorrect)
+					@if (!Model.IsTextCorrect)
 					{
 						<p class="text-info">
 							Текст заметки должен иметь длину до 1000 символов.

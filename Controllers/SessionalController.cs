@@ -27,6 +27,15 @@ namespace HRwflow.Controllers
             string username = HttpContext.Session.GetString("Username");
             if (username is null)
             {
+                if (Request.Path.HasValue)
+                {
+                    var path = Request.Path.Value;
+                    if (Request.QueryString.HasValue)
+                    {
+                        path += Request.QueryString.Value;
+                    }
+                    Response.Cookies.Append("RequestedPath", path);
+                }
                 errorActionResult
                     = RedirectAndInform("/account/signin", RedirectionModes.Warning);
                 return false;

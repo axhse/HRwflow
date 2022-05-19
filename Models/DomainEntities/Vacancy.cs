@@ -27,7 +27,7 @@ namespace HRwflow.Models
             {
                 if (value is not null)
                 {
-                    _tags = new(value.Where(tag => TagIsCorrect(tag)));
+                    _tags = new(value.Where(tag => IsTagCorrect(tag)));
                 }
             }
         }
@@ -46,9 +46,6 @@ namespace HRwflow.Models
             set => TrySetTitle(value);
         }
 
-        public static bool DescriptionIsCorrect(string description)
-            => description is null || description.Length <= 1000;
-
         public static string FormatTag(string tag)
         {
             if (tag is null)
@@ -59,10 +56,13 @@ namespace HRwflow.Models
                 tag.ToLower().Where(s => TagCorrectSymbols.Contains(s)));
         }
 
-        public static bool TagIsCorrect(string tag) => tag is not null
+        public static bool IsDescriptionCorrect(string description)
+                    => description is null || description.Length <= 1000;
+
+        public static bool IsTagCorrect(string tag) => tag is not null
             && Regex.IsMatch(tag, $"^[{TagCorrectSymbols}]{{2,20}}$");
 
-        public static bool TitleIsCorrect(string title) => title is null
+        public static bool IsTitleCorrect(string title) => title is null
             || (1 <= title.Length && title.Length <= 100);
 
         public void RemoveTag(string tag)
@@ -76,7 +76,7 @@ namespace HRwflow.Models
         public bool TryAddTag(string tag)
         {
             tag = FormatTag(tag);
-            if (TagIsCorrect(tag))
+            if (IsTagCorrect(tag))
             {
                 _tags.Add(tag);
                 return true;
@@ -90,7 +90,7 @@ namespace HRwflow.Models
             {
                 description = description.Trim();
             }
-            if (!DescriptionIsCorrect(description))
+            if (!IsDescriptionCorrect(description))
             {
                 return false;
             }
@@ -104,7 +104,7 @@ namespace HRwflow.Models
             {
                 title = title.Trim();
             }
-            if (!TitleIsCorrect(title))
+            if (!IsTitleCorrect(title))
             {
                 return false;
             }
@@ -139,7 +139,7 @@ namespace HRwflow.Models
             set => TrySetText(value);
         }
 
-        public static bool TextIsCorrect(string text)
+        public static bool IsTextCorrect(string text)
             => text is null || text.Length <= 1000;
 
         public bool TrySetText(string text)
@@ -148,7 +148,7 @@ namespace HRwflow.Models
             {
                 text = text.Trim();
             }
-            if (!TextIsCorrect(text))
+            if (!IsTextCorrect(text))
             {
                 return false;
             }
