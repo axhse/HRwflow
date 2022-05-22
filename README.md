@@ -1,6 +1,7 @@
 # HRwflow
 
 Учебный проект [HRwflow](https://hrwflow.live) реализует систему управления процессом поиска сотрудников.  
+Актуальная версия кода: branch [web](https://github.com/axhse/HRwflow/tree/web).  
 
 ## Текущие возможности
 
