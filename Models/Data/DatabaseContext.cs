@@ -6,16 +6,13 @@ namespace HRwflow.Models.Data
     public abstract class DatabaseContext<TEntity> : DbContext, IDatabaseContext<TEntity>
         where TEntity : class
     {
-        protected DatabaseContext(DbContextOptions options) : base(options)
-        {
-            // Database.EnsureCreated();
-        }
+        protected DatabaseContext(DbContextOptions options)
+            : base(options) { }
 
         protected DatabaseContext(string connectionString)
             : base(new DbContextOptions<DatabaseContext<TEntity>>())
         {
             Database.SetConnectionString(connectionString);
-            // Database.EnsureCreated();
         }
 
         public DbSet<TEntity> Items { get; set; }

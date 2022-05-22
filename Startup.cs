@@ -20,10 +20,9 @@ namespace HRwflow
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            // env.EnvironmentName = Environments.Production;
+            env.EnvironmentName = Environments.Production;
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -31,8 +30,6 @@ namespace HRwflow
             else
             {
                 app.UseExceptionHandler("/home/error");
-                // The default HSTS value is 30 days. You may want to change this for production
-                // scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
                 app.UseHttpsRedirection();
             }
@@ -59,7 +56,6 @@ namespace HRwflow
             });
         }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
@@ -71,14 +67,11 @@ namespace HRwflow
                 options.IdleTimeout = TimeSpan.FromDays(1);
             });
 
-            {
-                // FIXME: TEMP
-                var devConnection
-                    = "Server=localhost\\SQLEXPRESS;Database=Hrwflow;Trusted_Connection=True;";
-                Environment.SetEnvironmentVariable("ConnectionString", devConnection);
-            }
-
-            var connectionString = Environment.GetEnvironmentVariable("ConnectionString");
+            var configuration = new ConfigurationBuilder()
+               .AddJsonFile("appsettings.json", true, true)
+               .Build();
+            var connectionString
+                = configuration.GetConnectionString("Production");
 
             var customerInfoService = new DbContextService<string, CustomerInfo>(
                     new CustomerInfoDbContext(connectionString));

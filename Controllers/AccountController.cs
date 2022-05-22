@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using HRwflow.Models;
+﻿using HRwflow.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -122,16 +121,20 @@ namespace HRwflow.Controllers
                     }
                 }
                 var password = Request.Form.GetValue("newPassword");
-                model.IsPasswordCorrect = AuthInfo.IsPasswordCorrect(password);
-                model.IsPasswordConfirmationCorrect =
-                    password == Request.Form.GetValue("passwordConfirmation");
-                if (model.IsPasswordCorrect
-                    && model.IsPasswordConfirmationCorrect)
+                if (password is not null
+                    && password != string.Empty)
                 {
-                    if (!_authService.UpdatePassword(
-                        Username, password).IsCompleted)
+                    model.IsPasswordCorrect = AuthInfo.IsPasswordCorrect(password);
+                    model.IsPasswordConfirmationCorrect =
+                        password == Request.Form.GetValue("passwordConfirmation");
+                    if (model.IsPasswordCorrect
+                        && model.IsPasswordConfirmationCorrect)
                     {
-                        return ShowError(ControllerErrors.OperationFaulted);
+                        if (!_authService.UpdatePassword(
+                            Username, password).IsCompleted)
+                        {
+                            return ShowError(ControllerErrors.OperationFaulted);
+                        }
                     }
                 }
                 return View(model);

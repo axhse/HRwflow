@@ -14,7 +14,6 @@ namespace HRwflow.Models.Data
             builder.Property(team => team.TeamId).ValueGeneratedOnAdd();
             builder.Property(team => team.VacancyCount).IsRequired();
             builder.Property(team => team.Properties).IsRequired();
-            builder.Property(team => team.Properties).HasMaxLength(500);
             builder.Property(team => team.Properties)
                    .HasConversion(new JsonConverter<TeamProperties>());
             builder.Property(team => team.Permissions).IsRequired();

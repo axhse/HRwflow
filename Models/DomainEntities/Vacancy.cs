@@ -20,7 +20,15 @@ namespace HRwflow.Models
         private HashSet<string> _tags;
         private string _title;
 
-        public HashSet<string> AllTags
+        public string Description
+        {
+            get => _description is null ? string.Empty : _description;
+            set => TrySetDescription(value);
+        }
+
+        public VacancyStates State { get; set; }
+
+        public HashSet<string> Tags
         {
             get => _tags is null ? new() : new(_tags);
             set
@@ -31,14 +39,6 @@ namespace HRwflow.Models
                 }
             }
         }
-
-        public string Description
-        {
-            get => _description is null ? string.Empty : _description;
-            set => TrySetDescription(value);
-        }
-
-        public VacancyStates State { get; set; }
 
         public string Title
         {
@@ -115,9 +115,9 @@ namespace HRwflow.Models
 
     public class Vacancy
     {
-        public Dictionary<string, VacancyNote> Notes = new();
         public DateTime CreationTime { get; } = DateTime.UtcNow;
         public DateTime LastNoteUpdateTime { get; set; } = DateTime.UtcNow;
+        public Dictionary<string, VacancyNote> Notes { get; set; } = new();
         public int OwnerTeamId { get; set; }
         public VacancyProperties Properties { get; set; } = new();
         public int VacancyId { get; set; }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using HRwflow.Models.Data;
@@ -48,7 +47,6 @@ namespace HRwflow.Models
             {
                 return TaskResult<TEntity>.Uncompleted();
             }
-            // using var _ = _locker.Acquire(key);
             try
             {
                 var entity = _databaseContext.Items.Find(key);

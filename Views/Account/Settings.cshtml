@@ -57,7 +57,7 @@
 					Новый пароль
 				</label>
 				<input type="password" class="form-control text-center"
-						id="newPasswordInput" name="newPassword">
+						id="newPasswordInput" name="newPassword" autocomplete="new-password">
 				@if (!Model.IsPasswordCorrect)
 				{
 					<p class="text-info">
@@ -70,7 +70,8 @@
 					Повтор пароля
 				</label>
 				<input type="password" class="form-control text-center"
-						id="passwordConfirmationInput" name="passwordConfirmation">
+						id="passwordConfirmationInput" name="passwordConfirmation"
+						autocomplete="new-password">
 				@if (!Model.IsPasswordConfirmationCorrect)
 				{
 					<p class="text-info">Пароли должны совпадать.</p>

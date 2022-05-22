@@ -13,8 +13,6 @@ namespace HRwflow.Models.Data
             builder.Property(customer => customer.Username).ValueGeneratedNever();
             builder.Property(customer => customer.Username).HasMaxLength(20);
             builder.Property(customer => customer.Properties).IsRequired();
-            // Current Length +- 113;
-            builder.Property(customer => customer.Properties).HasMaxLength(500);
             builder.Property(customer => customer.Properties)
                    .HasConversion(new JsonConverter<CustomerProperties>());
             builder.ToTable(nameof(Customer));
