@@ -1,6 +1,9 @@
-﻿@model EditVacancyPropertiesVM
+﻿@model CreateVacancyVM
 @{
 	ViewData["Title"] = "Create Vacancy";
+	string errorText = Model.CanCreate ? null
+		: "В группе могут существовать не более чем" +
+			$" {WorkplaceLimits.VacanciesMaxCount} вакансий.";
 }
 
 <div class="navbar custom-navbar border-bottom">
@@ -19,7 +22,8 @@
 					Название вакансии
 				</label>
 				<input type="text" class="form-control text-center"
-					id="titleInput" name="title">
+					id="titleInput" name="title"
+					value="@Model.Properties.Title">
 				@if (!Model.IsTitleCorrect)
 				{
 					<p class="text-info">
@@ -28,6 +32,10 @@
 				}
 			</div>
 			<div class="mt-5">
+				@if (errorText is not null)
+				{
+					<p class="text-info">@errorText</p>
+				}
 				<button type="submit" class="btn btn-success">
 					Создать
 				</button>

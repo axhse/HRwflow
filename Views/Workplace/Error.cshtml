@@ -1,21 +1,12 @@
-﻿@model WorkplaceErrorVM
+﻿@model ErrorVM<CommonErrors>
 @{
 	ViewData["Title"] = "Error";
 	var errorText = Model.Error switch
 	{
-		WorkplaceErrors.ServerError
-			=> "Сервер не может обработать данное действие в текущий момент.",
-		WorkplaceErrors.NoPermission => "У вас нет разрешения на данное действие.",
-		WorkplaceErrors.ResourceNotFound
-			=> "Ресурс не существует или имеет ограниченный доступ.",
-		WorkplaceErrors.UserNotFound => "Пользователь не найден.",
-		WorkplaceErrors.UserAlreadyJoined => "Пользователь уже добавлен в группу.",
-		WorkplaceErrors.JoinLimitExceeded => "Пользователь может состоять" +
-			$" не более чем в {WorkplaceLimits.TeamJoinLimit} группах.",
-		WorkplaceErrors.TeamSizeLimitExceeded => "В группе может быть" +
-			$" не более чем {WorkplaceLimits.TeamJoinLimit} участников.",
-		WorkplaceErrors.VacancyCountLimitExceeded => "В группе могут существовать" +
-			$" не более чем {WorkplaceLimits.VacanciesMaxCount} вакансий.",
+		CommonErrors.NoPermission
+			=> "У вас нет разрешения на данное действие.",
+		CommonErrors.ResourceNotFound => "Ресурс не существует"
+			+ " или имеет ограниченный доступ.",
 		_ => null
 	};
 }

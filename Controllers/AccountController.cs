@@ -6,14 +6,15 @@ namespace HRwflow.Controllers
 {
     public class AccountController : SessionalController
     {
-        private readonly IAuthService _authService;
+        private readonly AuthService _authService;
         private readonly IStorageService<string, CustomerInfo> _customerInfos;
         private readonly IStorageService<string, Customer> _customers;
         private readonly WorkplaceService _workplaceService;
 
-        public AccountController(IAuthService authService,
+        public AccountController(
             IStorageService<string, CustomerInfo> customerInfos,
             IStorageService<string, Customer> customers,
+            AuthService authService,
             WorkplaceService workplaceService)
             : base(customerInfos, customers)
         {
@@ -27,43 +28,25 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Delete()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: true))
-            {
-                return errorActionResult;
-            }
+            CheckSession();
             if (Request.Method.ToUpper() == "GET")
             {
                 return View();
             }
-            if (Request.Method.ToUpper() == "POST")
+            CustomerInfo.AccountState
+                = AccountStates.OnDeletion;
+            _customerInfos.Update(Username, CustomerInfo);
+            var info = _customerInfos.Find(Username);
+            foreach (var teamId in info.JoinedTeamNames.Keys)
             {
-                HttpContext.Session.Clear();
-                CustomerInfo.AccountState = AccountStates.OnDeletion;
-                if (!_customerInfos.Update(Username, CustomerInfo).IsCompleted)
-                {
-                    return ShowError(ControllerErrors.OperationFaulted);
-                }
-                var infoResult = _customerInfos.Get(Username);
-                if (!infoResult.IsCompleted)
-                {
-                    return ShowError(ControllerErrors.OperationFaulted);
-                }
-                foreach (var teamId in infoResult.Value.JoinedTeamNames.Keys)
-                {
-                    if (_workplaceService.Leave(Username, teamId).HasError)
-                    {
-                        return ShowError(ControllerErrors.OperationFaulted);
-                    }
-                }
-                if (!_customerInfos.Delete(Username).IsCompleted
-                    || !_customers.Delete(Username).IsCompleted
-                    || !_authService.DeleteAccount(Username).IsCompleted)
-                {
-                    return ShowError(ControllerErrors.OperationFaulted);
-                }
-                return RedirectAndInform("/", RedirectionModes.Success);
+                _workplaceService.Leave(Username, teamId);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            _customerInfos.Delete(Username);
+            _customers.Delete(Username);
+            _authService.DeleteAccount(Username);
+            HttpContext.Session.Clear();
+            return RedirectAndInform("/",
+                RedirectionModes.Success);
         }
 
         [HttpGet]
@@ -72,7 +55,8 @@ namespace HRwflow.Controllers
         public IActionResult Exit()
         {
             HttpContext.Session.Clear();
-            return RedirectAndInform("/account/signin", RedirectionModes.Success);
+            return RedirectAndInform("/account/signin",
+                RedirectionModes.Success);
         }
 
         [HttpGet]
@@ -80,142 +64,115 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult Main()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: true))
+            return View(new CustomerVM
             {
-                return errorActionResult;
-            }
-            return SelfMain(
-                new CustomerVM { Customer = Customer, CustomerInfo = CustomerInfo });
+                Customer = Customer,
+                CustomerInfo = CustomerInfo
+            });
         }
 
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult RedirectMain()
         {
-            return RedirectMain(RedirectionModes.Default);
+            return RedirectMain();
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Settings()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
             var model = new SettingsVM { Customer = Customer };
             if (Request.Method.ToUpper() == "GET")
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            var properties = Customer.Properties;
+            model.IsNameCorrect = properties.TrySetName(
+                Request.Form.GetValue("name"));
+            if (!properties.Equals(Customer.Properties))
             {
-                var properties = Customer.Properties;
-                model.IsNameCorrect = properties.TrySetName(Request.Form.GetValue("name"));
-                if (!properties.Equals(Customer.Properties))
-                {
-                    Customer.Properties = properties;
-                    if (!_customers.Update(Username, Customer).IsCompleted)
-                    {
-                        return ShowError(ControllerErrors.OperationFaulted);
-                    }
-                }
-                var password = Request.Form.GetValue("newPassword");
-                if (password is not null
-                    && password != string.Empty)
-                {
-                    model.IsPasswordCorrect = AuthInfo.IsPasswordCorrect(password);
-                    model.IsPasswordConfirmationCorrect =
-                        password == Request.Form.GetValue("passwordConfirmation");
-                    if (model.IsPasswordCorrect
-                        && model.IsPasswordConfirmationCorrect)
-                    {
-                        if (!_authService.UpdatePassword(
-                            Username, password).IsCompleted)
-                        {
-                            return ShowError(ControllerErrors.OperationFaulted);
-                        }
-                    }
-                }
-                return View(model);
+                Customer.Properties = properties;
+                _customers.Update(Username, Customer);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            var password = Request.Form.GetValue("newPassword");
+            if (password is not null
+                && password != string.Empty)
+            {
+                model.IsPasswordCorrect
+                    = AuthInfo.IsPasswordCorrect(password);
+                model.IsPasswordConfirmationCorrect =
+                    password == Request.Form.GetValue(
+                        "passwordConfirmation");
+                if (model.IsPasswordCorrect
+                    && model.IsPasswordConfirmationCorrect)
+                {
+                    _authService.UpdatePassword(
+                        Username, password);
+                }
+            }
+            return View(model);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult SignIn()
         {
-            if (HttpContext.Session.TryGetValue("Username", out var _))
+            if (HttpContext.Session.TryGetValue(
+                "Username", out _))
             {
                 return RedirectMain(RedirectionModes.Success);
             }
             var model = new SignInVM();
             if (Request.Method.ToUpper() == "GET")
             {
-                if (!Request.Cookies.TryGetValue("Username", out string username))
+                if (!Request.Cookies.TryGetValue(
+                    "Username", out string rememberedUsername))
                 {
-                    model.RememberMeChecked = false;
+                    model.IsRememberMeChecked = false;
                 }
-                model.DefaultUsername = username;
+                model.DefaultUsername = rememberedUsername;
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            string username = Request.Form.GetValue("username");
+            string password = Request.Form.GetValue("password");
+            bool rememberMeChecked = Request.Form.GetValue(
+                "rememberMe") is not null;
+            username = Customer.FormatUsername(username);
+            model.DefaultUsername = username;
+            model.IsRememberMeChecked = rememberMeChecked;
+            if (rememberMeChecked)
             {
-                string username = Request.Form.GetValue("username");
-                string password = Request.Form.GetValue("password");
-                bool rememberMeChecked = Request.Form.GetValue("rememberMe") is not null;
-                username = Customer.FormatUsername(username);
-                model.DefaultUsername = username;
-                model.RememberMeChecked = rememberMeChecked;
-                if (rememberMeChecked)
-                {
-                    Response.Cookies.Append("Username", username);
-                }
-                else
-                {
-                    Response.Cookies.Delete("Username");
-                }
-                var existsResult = _authService.IsUserExists(username);
-                if (!existsResult.IsCompleted)
-                {
-                    return ShowError(ControllerErrors.OperationFaulted);
-                }
-                if (existsResult.Value)
-                {
-                    var signInResult = _authService.SignIn(username, password);
-                    if (!signInResult.IsCompleted)
-                    {
-                        return ShowError(ControllerErrors.OperationFaulted);
-                    }
-                    if (signInResult.Value)
-                    {
-                        HttpContext.Session.SetString("Username", username);
-
-                        if (!Request.Cookies.TryGetValue("RequestedPath",
-                            out string path))
-                        {
-                            path = "/account";
-                        }
-                        Response.Cookies.Delete("RequestedPath");
-                        return RedirectAndInform(path, RedirectionModes.Success);
-                    }
-                    model.IsPasswordValid = false;
-                }
-                else
-                {
-                    model.IsUserExists = false;
-                }
+                Response.Cookies.Append("Username", username);
+            }
+            else
+            {
+                Response.Cookies.Delete("Username");
+            }
+            var result = _authService.SignIn(
+                username, password);
+            if (result.HasError)
+            {
+                model.Error = result.Error;
                 return View(model);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            HttpContext.Session.SetString("Username", username);
+            if (!Request.Cookies.TryGetValue("RequestedPath",
+                out string path))
+            {
+                path = "/account";
+            }
+            Response.Cookies.Delete("RequestedPath");
+            return RedirectAndInform(path,
+                RedirectionModes.Success);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult SignUp()
         {
-            if (HttpContext.Session.TryGetValue("Username", out var _))
+            if (HttpContext.Session.TryGetValue(
+                "Username", out _))
             {
                 return RedirectMain(RedirectionModes.Success);
             }
@@ -224,49 +181,46 @@ namespace HRwflow.Controllers
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            string username = Request.Form.GetValue("username");
+            string password = Request.Form.GetValue("password");
+            string passwordConfirmation
+                = Request.Form.GetValue("passwordConfirmation");
+            username = Customer.FormatUsername(username);
+            model.DefaultUsername = username;
+            model.IsUsernameCorrect
+                = Customer.IsUsernameCorrect(username);
+            model.IsPasswordCorrect
+                = AuthInfo.IsPasswordCorrect(password);
+            model.IsPasswordConfirmationCorrect
+                = password == passwordConfirmation;
+            if (model.IsUsernameCorrect)
             {
-                string username = Request.Form.GetValue("username");
-                string password = Request.Form.GetValue("password");
-                string passwordConfirmation = Request.Form.GetValue("passwordConfirmation");
-                username = Customer.FormatUsername(username);
-                model.DefaultUsername = username;
-                model.IsUsernameCorrect = Customer.IsUsernameCorrect(username);
-                model.IsPasswordCorrect = AuthInfo.IsPasswordCorrect(password);
-                model.IsPasswordConfirmationCorrect = password == passwordConfirmation;
-                if (model.IsUsernameCorrect)
-                {
-                    var existsResult = _authService.IsUserExists(username);
-                    if (!existsResult.IsCompleted)
-                    {
-                        return ShowError(ControllerErrors.OperationFaulted);
-                    }
-                    model.IsUsernameUnused = !existsResult.Value;
-                }
-                if (!model.HasErrors)
-                {
-                    var customer = new Customer { Username = username };
-                    var customerInfo = new CustomerInfo { Username = username };
-                    if (_authService.SignUp(username, password).IsCompleted
-                        && _customers.Insert(username, customer).IsCompleted
-                        && _customerInfos.Insert(username, customerInfo).IsCompleted)
-                    {
-                        HttpContext.Session.SetString("Username", username);
-                        return RedirectMain(RedirectionModes.Success);
-                    }
-                    else
-                    {
-                        _customers.Delete(username);
-                        _customerInfos.Delete(username);
-                        return ShowError(ControllerErrors.OperationFaulted);
-                    }
-                }
+                model.IsUsernameUnused
+                    = !_authService.IsAccountExists(username);
+            }
+            if (model.HasErrors)
+            {
                 return View(model);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            var customer = new Customer { Username = username };
+            var customerInfo
+                = new CustomerInfo { Username = username };
+            var result
+                = _authService.SignUp(username, password);
+            if (result.HasError)
+            {
+                model.Error = result.Error;
+                return View(model);
+            }
+            _customers.Insert(username, customer);
+            _customerInfos.Insert(username, customerInfo);
+            HttpContext.Session.SetString("Username", username);
+            return RedirectMain(RedirectionModes.Success);
         }
 
-        private IActionResult RedirectMain(RedirectionModes redirectionMode)
+        private IActionResult RedirectMain(
+            RedirectionModes redirectionMode
+            = RedirectionModes.Default)
         {
             return RedirectAndInform("/account", redirectionMode);
         }

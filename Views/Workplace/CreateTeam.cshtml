@@ -1,6 +1,9 @@
-﻿@model EditTeamPropertiesVM
+﻿@model CreateTeamVM
 @{
 	ViewData["Title"] = "Create Team";
+	string errorText = Model.CanCreate ? null
+		: "Вы можете состоять не более чем в" +
+			$" {WorkplaceLimits.TeamJoinLimit} группах.";
 }
 
 <div class="navbar custom-navbar border-bottom">
@@ -18,7 +21,9 @@
 				<label for="nameInput" class="form-label">
 					Название группы
 				</label>
-				<input type="text" class="form-control text-center" id="nameInput" name="name">
+				<input type="text" class="form-control text-center"
+					id="nameInput" name="name"
+					value="@Model.Properties.Name">
 				@if (!Model.IsNameCorrect)
 				{
 					<p class="text-info">
@@ -27,6 +32,10 @@
 				}
 			</div>
 			<div class="mt-5">
+				@if (errorText is not null)
+				{
+					<p class="text-info">@errorText</p>
+				}
 				<button type="submit" class="btn btn-success">
 					Создать
 				</button>

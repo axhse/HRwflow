@@ -10,13 +10,13 @@ namespace HRwflow.Controllers
         [HttpGet]
         public IActionResult Error()
         {
-            return ShowError();
+            return View();
         }
 
         [HttpGet]
         public override IActionResult Main()
         {
-            return SelfMain();
+            return View();
         }
 
         [HttpGet]

@@ -39,27 +39,21 @@
         </div>
 
         <div class="mt-5">
-			@if(Model.Team.HasMember(Model.Username)
-				&& Model.Team.Permissions[Model.Username].HasFlag(
-					TeamPermissions.CommentVacancy))
+			@if(Model.CanComment)
 			{
 				<a class="btn btn-success my-1"
 						href="/workplace/note?vacancyId=@Model.Vacancy.VacancyId&username=@Model.Username">
 					Моя заметка
 				</a>
 			}
-			@if(Model.Team.HasMember(Model.Username)
-				&& Model.Team.Permissions[Model.Username].HasFlag(
-					TeamPermissions.ModifyVacancy))
+			@if(Model.CanEdit)
 			{
 				<a class="btn btn-success my-1"
 						href="/workplace/editvacancy?vacancyId=@Model.Vacancy.VacancyId">
 					Редактировать
 				</a>
 			}
-			@if(Model.Team.HasMember(Model.Username)
-				&& Model.Team.Permissions[Model.Username].HasFlag(
-					TeamPermissions.DeleteVacancy))
+			@if(Model.CanDelete)
 			{
 				<a class="btn btn-secondary my-1"
 						href="/workplace/deletevacancy?vacancyId=@Model.Vacancy.VacancyId">

@@ -80,8 +80,7 @@ namespace HRwflow
             var vacancyService = new DbContextService<int, Vacancy>(
                     new VacancyDbContext(connectionString));
 
-            services.AddSingleton<IAuthService>(
-                new AuthService(
+            services.AddSingleton(new AuthService(
                     new DbContextService<string, AuthInfo>(
                         new AuthInfoDbContext(connectionString))));
 

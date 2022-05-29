@@ -6,12 +6,23 @@ namespace HRwflow.Models
 
         public string DefaultUsername
         {
-            get => _defaultUsername is null ? string.Empty : _defaultUsername;
+            get => _defaultUsername is null
+                ? string.Empty : _defaultUsername;
             set => _defaultUsername = value;
         }
 
-        public bool HasErrors => !IsUsernameCorrect || !IsPasswordCorrect
-                || !IsPasswordConfirmationCorrect || !IsUsernameUnused;
+        public bool HasErrors => !IsUsernameUnused
+            || !IsUsernameCorrect || !IsPasswordCorrect
+            || !IsPasswordConfirmationCorrect;
+
+        public SignUpErrors Error
+        {
+            set
+            {
+                IsUsernameUnused &=
+                    value != SignUpErrors.UsernameIsTaken;
+            }
+        }
 
         public bool IsPasswordConfirmationCorrect { get; set; } = true;
         public bool IsPasswordCorrect { get; set; } = true;

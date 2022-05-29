@@ -6,176 +6,135 @@ using HRwflow.Models.Data;
 
 namespace HRwflow.Models
 {
-    public class DbContextService<TPrimaryKey, TEntity> : IStorageService<TPrimaryKey, TEntity>
+    public class DbContextService<TPrimaryKey, TEntity>
+        : IStorageService<TPrimaryKey, TEntity>
         where TEntity : class
     {
         private readonly IDatabaseContext<TEntity> _databaseContext;
         private readonly ItemLocker<object> _locker = new();
 
-        public DbContextService(IDatabaseContext<TEntity> databaseContext)
+        public DbContextService(
+            IDatabaseContext<TEntity> databaseContext)
         {
             _databaseContext = databaseContext;
         }
 
-        public TaskResult Delete(TPrimaryKey key)
+        public void Delete(TPrimaryKey key)
         {
-            if (key is null)
+            using var _ = _locker.Acquire(key);
+            _databaseContext.Items.Remove(
+                _databaseContext.Items.Find(key));
+            _databaseContext.SaveChangesAsync().Wait();
+        }
+
+        public bool TryFind(TPrimaryKey key, out TEntity entity)
+        {
+            entity = _databaseContext.Items.Find(key);
+            return entity is not null;
+        }
+
+        public TEntity Find(TPrimaryKey key)
+        {
+            if (!TryFind(key, out var entity))
             {
-                return TaskResult.Uncompleted();
+                throw new InvalidOperationException(
+                    $"Key {key} not found.");
+            }
+            return entity;
+        }
+
+        public bool HasKey(TPrimaryKey key)
+        {
+            return TryFind(key, out _);
+        }
+
+        public bool TryInsert(
+            TEntity entity, out TPrimaryKey key)
+        {
+            key = GetPrimaryKey(entity);
+            using var _ = _locker.Acquire(key);
+            if (HasKey(key))
+            {
+                return false;
+            }
+            var entry = _databaseContext.Items.Add(entity);
+            _databaseContext.SaveChangesAsync().Wait();
+            key = GetPrimaryKey(entry.Entity);
+            return true;
+        }
+
+        public TPrimaryKey Insert(TEntity entity)
+        {
+            if (!TryInsert(entity, out var key))
+            {
+                throw new InvalidOperationException(
+                    $"The entity with the same primary key" +
+                    $" alredy exists.");
+            }
+            return key;
+        }
+
+        public void Insert(TPrimaryKey key, TEntity entity)
+        {
+            if (!TryInsert(key, entity))
+            {
+                throw new InvalidOperationException(
+                    $"The entity with the same primary key" +
+                    $" alredy exists.");
+            }
+        }
+
+        public bool TryInsert(TPrimaryKey key, TEntity entity)
+        {
+            if (!key.Equals(GetPrimaryKey(entity)))
+            {
+                throw new InvalidOperationException(
+                    $"Key value is different from" +
+                    $" entity primary key value.");
             }
             using var _ = _locker.Acquire(key);
-            try
+            if (HasKey(key))
             {
-                var entity = _databaseContext.Items.Find(key);
-                if (entity is null)
-                {
-                    return TaskResult.Completed();
-                }
-                _databaseContext.Items.Remove(entity);
-                _databaseContext.SaveChangesAsync().Wait();
-                return TaskResult.Completed();
+                return false;
             }
-            catch
-            {
-                return TaskResult.Uncompleted();
-            }
+            _databaseContext.Items.Add(entity);
+            _databaseContext.SaveChangesAsync().Wait();
+            return true;
         }
 
-        public TaskResult<TEntity> Get(TPrimaryKey key)
-        {
-            if (key is null)
-            {
-                return TaskResult<TEntity>.Uncompleted();
-            }
-            try
-            {
-                var entity = _databaseContext.Items.Find(key);
-                if (entity is null)
-                {
-                    return TaskResult<TEntity>.Uncompleted();
-                }
-                return TaskResult.FromValue(entity);
-            }
-            catch
-            {
-                return TaskResult<TEntity>.Uncompleted();
-            }
-        }
-
-        public TaskResult<bool> HasKey(TPrimaryKey key)
-        {
-            if (key is null)
-            {
-                return TaskResult<bool>.Uncompleted();
-            }
-            using var _ = _locker.Acquire(key);
-            try
-            {
-                return TaskResult.FromValue(
-                    _databaseContext.Items.Find(key) is not null);
-            }
-            catch
-            {
-                return TaskResult<bool>.Uncompleted();
-            }
-        }
-
-        public TaskResult<TPrimaryKey> Insert(TEntity entity)
-        {
-            if (entity is null)
-            {
-                return TaskResult<TPrimaryKey>.Uncompleted();
-            }
-            var key = GetPrimaryKey(entity);
-            using var _ = _locker.Acquire(key);
-            try
-            {
-                if (_databaseContext.Items.Find(key) is not null)
-                {
-                    return TaskResult<TPrimaryKey>.Uncompleted();
-                }
-                var entry = _databaseContext.Items.Add(entity);
-                _databaseContext.SaveChangesAsync().Wait();
-                var generatedKey = GetPrimaryKey(entry.Entity);
-                return TaskResult.FromValue(generatedKey);
-            }
-            catch
-            {
-                return TaskResult<TPrimaryKey>.Uncompleted();
-            }
-        }
-
-        public TaskResult Insert(TPrimaryKey key, TEntity entity)
-        {
-            if (key is null || entity is null)
-            {
-                return TaskResult.Uncompleted();
-            }
-            using var _ = _locker.Acquire(key);
-            try
-            {
-                if (key.Equals(GetPrimaryKey(entity))
-                    && _databaseContext.Items.Find(key) is null)
-                {
-                    _databaseContext.Items.Add(entity);
-                    _databaseContext.SaveChangesAsync().Wait();
-                    return TaskResult.Completed();
-                }
-                return TaskResult.Uncompleted();
-            }
-            catch
-            {
-                return TaskResult.Uncompleted();
-            }
-        }
-
-        public TaskResult<IEnumerable<TEntity>> Select(
+        public IEnumerable<TEntity> Select(
             Expression<Func<TEntity, bool>> selector)
         {
-            if (selector is null)
-            {
-                return TaskResult<IEnumerable<TEntity>>.Uncompleted();
-            }
-            try
-            {
-                return TaskResult.FromValue(
-                    _databaseContext.Items.Where(selector).AsEnumerable());
-            }
-            catch
-            {
-                return TaskResult<IEnumerable<TEntity>>.Uncompleted();
-            }
+            return _databaseContext.Items.
+                Where(selector).AsEnumerable();
         }
 
-        public TaskResult Update(TPrimaryKey key, TEntity entity)
+        public bool TryUpdate(TPrimaryKey key, TEntity entity)
         {
-            if (key is null || entity is null)
+            using var _ = _locker.Acquire(key);
+            if (!HasKey(key))
             {
-                return TaskResult.Uncompleted();
+                return false;
+            }
+            _databaseContext.Items.Update(entity);
+            _databaseContext.SaveChangesAsync().Wait();
+            return true;
+        }
+
+        public void Update(TPrimaryKey key, TEntity entity)
+        {
+            if (!TryUpdate(key, entity))
+            {
+                throw new InvalidOperationException(
+                    $"Key {key} not found.");
             }
             using var _ = _locker.Acquire(key);
-            try
-            {
-                if (!key.Equals(GetPrimaryKey(entity)))
-                {
-                    return TaskResult.Uncompleted();
-                }
-                _databaseContext.Items.Update(entity);
-                _databaseContext.SaveChangesAsync().Wait();
-                return TaskResult.Completed();
-            }
-            catch
-            {
-                return TaskResult.Uncompleted();
-            }
+            _databaseContext.Items.Update(entity);
+            _databaseContext.SaveChangesAsync().Wait();
         }
 
         private TPrimaryKey GetPrimaryKey(TEntity entity)
         {
-            if (entity is null)
-            {
-                return default;
-            }
             var entry = _databaseContext.Entry(entity);
             object[] keys = entry.Metadata.FindPrimaryKey().Properties
                          .Select(p => entry.Property(p.Name).CurrentValue)

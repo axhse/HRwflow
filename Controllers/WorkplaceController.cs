@@ -21,100 +21,78 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult CreateTeam()
         {
-            if (!TryIdentifyCustomer(out var errorActionResult, loadInfo: true))
-            {
-                return errorActionResult;
-            }
-            if (WorkplaceLimits.TeamJoinLimit
-                <= CustomerInfo.JoinedTeamNames.Count)
-            {
-                return ShowError(WorkplaceErrors.JoinLimitExceeded);
-            }
-            var model = new EditTeamPropertiesVM();
+            CheckSession();
+            var model = new CreateTeamVM();
             if (Request.Method.ToUpper() == "GET")
+            {
+                model.CanCreate
+                    = CustomerInfo.JoinedTeamNames.Count
+                    < WorkplaceLimits.TeamJoinLimit;
+                return View(model);
+            }
+            string name = Request.Form.GetValue("name");
+            var properties = new TeamProperties();
+            model.IsNameCorrect = properties.TrySetName(name);
+            model.Properties = properties;
+            if (model.HasErrors)
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            var result = _workplaceService.CreateTeam(
+                Username, properties);
+            if (result.HasError)
             {
-                string name = Request.Form.GetValue("name");
-                var teamProperties = new TeamProperties();
-                model.TeamProperties = teamProperties;
-                model.IsNameCorrect = teamProperties.TrySetName(name);
-                if (model.HasErrors)
-                {
-                    return View(model);
-                }
-                var createResult = _workplaceService.CreateTeam(Username, teamProperties);
-                if (createResult.HasError)
-                {
-                    return ShowError(createResult.Error);
-                }
-                return RedirectAndInform($"/workplace/team?teamId={createResult.Value}",
-                    RedirectionModes.Success);
+                model.Error = result.Error;
+                return View(model);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            return RedirectAndInform("/workplace/team?teamId="
+                + $"{result.Value}", RedirectionModes.Success);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult CreateVacancy(int teamId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            var teamResult = _workplaceService.GetTeam(
+                Username, teamId, TeamPermissions.CreateVacancy);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
             }
             var team = teamResult.Value;
-            if (!team.Permissions.TryGetValue(Username, out var permissions)
-                || !permissions.HasFlag(TeamPermissions.CreateVacancy))
-            {
-                return ShowError(WorkplaceErrors.NoPermission);
-            }
-            if (WorkplaceLimits.VacanciesMaxCount <= team.VacancyCount)
-            {
-                return ShowError(WorkplaceErrors.VacancyCountLimitExceeded);
-            }
-            var model = new EditVacancyPropertiesVM();
+            var model = new CreateVacancyVM();
             if (Request.Method.ToUpper() == "GET")
+            {
+                model.CanCreate = team.VacancyCount
+                    < WorkplaceLimits.VacanciesMaxCount;
+                return View(model);
+            }
+            string title = Request.Form.GetValue("title");
+            var properties = new VacancyProperties();
+            model.IsTitleCorrect = properties.TrySetTitle(title);
+            model.Properties = properties;
+            if (model.HasErrors)
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            var result = _workplaceService.CreateVacancy(
+                Username, teamId, properties);
+            if (result.HasError)
             {
-                string title = Request.Form.GetValue("title");
-                var vacancyProperties = new VacancyProperties();
-                model.VacancyProperties = vacancyProperties;
-                model.IsTitleCorrect = vacancyProperties.TrySetTitle(title);
-                if (model.HasErrors)
-                {
-                    return View(model);
-                }
-                var createResult = _workplaceService.CreateVacancy(
-                    Username, teamId, vacancyProperties);
-                if (createResult.HasError)
-                {
-                    return ShowError(createResult.Error);
-                }
-                return RedirectAndInform($"/workplace/vacancy?vacancyId={createResult.Value}",
-                    RedirectionModes.Success);
+                model.Error = result.Error;
+                return View(model);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            return RedirectAndInform(
+                $"/workplace/vacancy?vacancyId={result.Value}",
+                RedirectionModes.Success);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult DeleteVacancy(int vacancyId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var vacancyResult = _workplaceService.GetVacancy(Username,
+            var vacancyResult
+                = _workplaceService.GetVacancy(Username,
                 vacancyId, TeamPermissions.DeleteVacancy);
             if (vacancyResult.HasError)
             {
@@ -125,38 +103,22 @@ namespace HRwflow.Controllers
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
-            {
-                var deletionResult = _workplaceService.DeleteVacancy(
-                    Username, vacancyId);
-                if (deletionResult.HasError)
-                {
-                    return ShowError(deletionResult.Error);
-                }
-                return RedirectAndInform(
-                    $"/workplace/vacancies?teamId={vacancyResult.Value.OwnerTeamId}",
-                    RedirectionModes.Success);
-            }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            _workplaceService.DeleteVacancy(Username, vacancyId);
+            return RedirectAndInform("/workplace/vacancies?" +
+                $"teamId={vacancyResult.Value.OwnerTeamId}",
+                RedirectionModes.Success);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult EditTeam(int teamId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            var teamResult
+                = _workplaceService.GetTeam(Username, teamId,
+                TeamPermissions.ModifyTeamProperties);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
-            }
-            if (!teamResult.Value.Permissions.TryGetValue(Username, out var permissions)
-                || !permissions.HasFlag(TeamPermissions.ModifyTeamProperties))
-            {
-                return ShowError(WorkplaceErrors.NoPermission);
             }
             var model = new EditTeamPropertiesVM
             {
@@ -167,36 +129,25 @@ namespace HRwflow.Controllers
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            string name = Request.Form.GetValue("name");
+            var properties = model.TeamProperties;
+            model.IsNameCorrect = properties.TrySetName(name);
+            if (!properties.Equals(model.TeamProperties))
             {
-                string name = Request.Form.GetValue("name");
-                var properties = model.TeamProperties;
-                model.IsNameCorrect = properties.TrySetName(name);
-                if (!properties.Equals(model.TeamProperties))
-                {
-                    model.TeamProperties = properties;
-                    var modifyResult = _workplaceService.ModifyTeamProperties(
-                       Username, teamId, properties);
-                    if (modifyResult.HasError)
-                    {
-                        return ShowError(modifyResult.Error);
-                    }
-                }
-                return View(model);
+                _workplaceService.ModifyTeamProperties(
+                    Username, teamId, properties);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            model.TeamProperties = properties;
+            return View(model);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult EditVacancy(int vacancyId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
             var vacancyResult = _workplaceService.GetVacancy(
-                Username, vacancyId, TeamPermissions.ModifyVacancy);
+                Username, vacancyId,
+                TeamPermissions.ModifyVacancy);
             if (vacancyResult.HasError)
             {
                 return ShowError(vacancyResult.Error);
@@ -211,93 +162,68 @@ namespace HRwflow.Controllers
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            var properties = model.VacancyProperties;
+            model.IsTitleCorrect = properties.TrySetTitle(
+                Request.Form.GetValue("title"));
+            model.IsDescriptionCorrect
+                = properties.TrySetDescription(
+                Request.Form.GetValue("description"));
+            if (Enum.TryParse<VacancyStates>(
+                Request.Form.GetValue("vacancyState"),
+                out var vacancyState))
             {
-                var properties = model.VacancyProperties;
-                model.IsTitleCorrect = properties.TrySetTitle(
-                    Request.Form.GetValue("title"));
-                model.IsDescriptionCorrect = properties.TrySetDescription(
-                    Request.Form.GetValue("description"));
-                if (Enum.TryParse<VacancyStates>(Request.Form.GetValue(
-                    "vacancyState"), out var vacancyState))
-                {
-                    properties.State = vacancyState;
-                }
-                if (!properties.Equals(model.VacancyProperties))
-                {
-                    model.VacancyProperties = properties;
-                    var modifyResult = _workplaceService.ModifyVacancyProperties(
-                       Username, vacancyId, properties);
-                    if (modifyResult.HasError)
-                    {
-                        return ShowError(modifyResult.Error);
-                    }
-                }
-                return View(model);
+                properties.State = vacancyState;
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            if (!properties.Equals(model.VacancyProperties))
+            {
+                _workplaceService.ModifyVacancyProperties(
+                    Username, vacancyId, properties);
+            }
+            model.VacancyProperties = properties;
+            return View(model);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Invite(int teamId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            var teamResult = _workplaceService.GetTeam(
+                Username, teamId, TeamPermissions.Invite);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
             }
-            if (!teamResult.Value.Permissions.TryGetValue(Username, out var permissions)
-                || !permissions.HasFlag(TeamPermissions.Invite))
-            {
-                return ShowError(WorkplaceErrors.NoPermission);
-            }
-            var model = new IdVM<int>(teamId);
+            var model = new InviteVM { TeamId = teamId };
             if (Request.Method.ToUpper() == "GET")
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            string username = Request.Form.GetValue("username");
+            var result = _workplaceService.Invite(
+                Username, teamId, username);
+            if (result.HasError)
             {
-                string username = Request.Form.GetValue("username");
-                var inviteResult = _workplaceService.Invite(Username, teamId, username);
-                if (inviteResult.HasError)
-                {
-                    return ShowError(inviteResult.Error);
-                }
-                return RedirectAndInform($"/workplace/team?teamId={teamId}",
-                    RedirectionModes.Success);
+                model.Error = result.Error;
+                return View(model);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            return RedirectAndInform("/workplace/team?teamId=" +
+                $"{teamId}", RedirectionModes.Success);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult LeaveTeam(int teamId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
+            CheckSession();
             var model = new IdVM<int>(teamId);
             if (Request.Method.ToUpper() == "GET")
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
-            {
-                var leaveResult = _workplaceService.Leave(Username, teamId);
-                if (leaveResult.HasError)
-                {
-                    return ShowError(leaveResult.Error);
-                }
-                return RedirectAndInform("/account", RedirectionModes.Success);
-            }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            _workplaceService.Leave(Username, teamId);
+
+            return RedirectAndInform(
+                "/account", RedirectionModes.Success);
         }
 
         [HttpGet]
@@ -311,36 +237,38 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Note(int vacancyId, string username)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
             var vacancyResult = _workplaceService.GetVacancy(
-               Username, vacancyId);
+               Username, vacancyId, TeamPermissions.Observer);
             if (vacancyResult.HasError)
             {
                 return ShowError(vacancyResult.Error);
             }
             var vacancy = vacancyResult.Value;
-            var teamResult = _workplaceService.GetTeam(
-               Username, vacancy.OwnerTeamId);
+            var teamResult = _workplaceService.GetTeam(Username,
+                vacancy.OwnerTeamId, TeamPermissions.Observer);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
             }
-            var permissions = teamResult.Value.Permissions[Username];
+            var permissions
+                = teamResult.Value.Permissions[Username];
             var model = new EditVacancyNoteVM
             {
                 VacancyId = vacancy.VacancyId,
                 CanEdit = Username == username
-                    && permissions.HasFlag(TeamPermissions.CommentVacancy),
-                CanDelete = permissions.HasFlag(TeamPermissions.ManageVacancyNotes)
+                    && permissions.HasFlag(
+                        TeamPermissions.CommentVacancy)
             };
-            if (!vacancy.Notes.TryGetValue(username, out var note))
+            model.CanDelete = model.CanEdit
+                || permissions.HasFlag(
+                    TeamPermissions.ManageVacancyNotes);
+            if (!vacancy.Notes.TryGetValue(
+                username, out var note))
             {
                 if (!model.CanEdit)
                 {
-                    return ShowError(WorkplaceErrors.ResourceNotFound);
+                    return ShowError(
+                        CommonErrors.ResourceNotFound);
                 }
                 note = new VacancyNote();
             }
@@ -349,93 +277,66 @@ namespace HRwflow.Controllers
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            var action = Request.Form.GetValue("submit");
+            if (action == "delete")
             {
-                var action = Request.Form.GetValue("submit");
-                if (action == "delete")
-                {
-                    var deletionResult = _workplaceService.DeleteVacancyNote(
-                        Username, vacancyId, username);
-                    if (deletionResult.HasError)
-                    {
-                        return ShowError(deletionResult.Error);
-                    }
-                    return RedirectAndInform(
-                        $"/workplace/vacancy?vacancyId={vacancyId}",
-                        RedirectionModes.Success);
-                }
-                var text = Request.Form.GetValue("text");
-                model.IsTextCorrect = note.TrySetText(text);
-                if (!model.HasErrors)
-                {
-                    var updateResult = _workplaceService.ModifyVacancyNote(
-                        Username, vacancyId, model.Note);
-                    if (updateResult.HasError)
-                    {
-                        return ShowError(updateResult.Error);
-                    }
-                }
-                return View(model);
+                _workplaceService.DeleteVacancyNote(
+                    Username, vacancyId, username);
+                return RedirectAndInform(
+                    $"/workplace/vacancy?vacancyId={vacancyId}",
+                    RedirectionModes.Success);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            var text = Request.Form.GetValue("text");
+            model.IsTextCorrect = note.TrySetText(text);
+            if (!model.HasErrors)
+            {
+                _workplaceService.ModifyVacancyNote(
+                    Username, vacancyId, model.Note);
+            }
+            return View(model);
         }
 
         [RequireHttps]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Profile(int teamId, string username)
+        public IActionResult Profile(
+            int teamId, string username)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            var teamResult = _workplaceService.GetTeam(
+                Username, teamId, TeamPermissions.Observer);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
             }
-            if (!teamResult.Value.HasMember(username))
-            {
-                return ShowError(WorkplaceErrors.UserNotFound);
-            }
-            var model = new MemberProfileVM(teamResult.Value, Username, username);
+            var model = new MemberProfileVM(
+                teamResult.Value, Username, username);
             if (Request.Method.ToUpper() == "GET")
             {
                 return View(model);
             }
-            if (Request.Method.ToUpper() == "POST")
+            if (Request.Form.GetValue("kick") is not null)
             {
-                if (Request.Form.GetValue("kick") is not null)
-                {
-                    var inviteResult = _workplaceService.Kick(Username, teamId, username);
-                    if (inviteResult.HasError)
-                    {
-                        return ShowError(inviteResult.Error);
-                    }
-                    return RedirectAndInform($"/workplace/team?teamId={teamId}",
-                        RedirectionModes.Success);
-                }
-                if (!Enum.TryParse<TeamPermissions>(
-                    Request.Form.GetValue("role"), out var newRole))
-                {
-                    return ShowError(WorkplaceErrors.ServerError);
-                }
-                var modifyResult = _workplaceService.ModifyRole(
-                            Username, teamId, username, newRole);
-                if (modifyResult.HasError)
-                {
-                    return ShowError(modifyResult.Error);
-                }
-                model.SubjectPermissions = newRole;
-                return View(model);
+                _workplaceService.Kick(
+                    Username, teamId, username);
+                return RedirectAndInform(
+                    $"/workplace/team?teamId={teamId}",
+                    RedirectionModes.Success);
             }
-            return ShowError(ControllerErrors.RequestUnsupported);
+            if (!Enum.TryParse<TeamPermissions>(
+                Request.Form.GetValue("role"), out var newRole))
+            {
+                throw new ArgumentException("Invalid form data.");
+            }
+            _workplaceService.ModifyRole(
+                Username, teamId, username, newRole);
+            model.SubjectPermissions = newRole;
+            return View(model);
         }
 
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public override IActionResult RedirectMain()
         {
-            return Main();
+            return RedirectAndInform("/workplace");
         }
 
         [HttpGet]
@@ -443,16 +344,13 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Team(int teamId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
+            var result = _workplaceService.GetTeam(
+                Username, teamId, TeamPermissions.Observer);
+            if (result.HasError)
             {
-                return errorActionResult;
+                return ShowError(result.Error);
             }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
-            if (teamResult.HasError)
-            {
-                return ShowError(teamResult.Error);
-            }
-            return View(new TeamVM(teamResult.Value, Username));
+            return View(new TeamVM(result.Value, Username));
         }
 
         [HttpGet]
@@ -461,16 +359,15 @@ namespace HRwflow.Controllers
         public IActionResult Vacancies(int teamId, string creationTimeOffset,
             string lastNoteTimeOffset, string vacancyStates)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            var teamResult = _workplaceService.GetTeam(
+                Username, teamId, TeamPermissions.Observer);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
             }
-            var vacanciesResult = _workplaceService.GetVacancies(Username, teamId);
+            var vacanciesResult
+                = _workplaceService.GetVacancies(
+                    Username, teamId, TeamPermissions.Observer);
             if (vacanciesResult.HasError)
             {
                 return ShowError(vacanciesResult.Error);
@@ -481,7 +378,8 @@ namespace HRwflow.Controllers
                 TeamId = teamResult.Value.TeamId,
                 TeamName = teamResult.Value.Properties.Name,
             };
-            if (Enum.TryParse(creationTimeOffset, out TimeSpans timeOffset))
+            if (Enum.TryParse(creationTimeOffset,
+                out TimeSpans timeOffset))
             {
                 model.CreationTimeOffset = timeOffset;
             }
@@ -494,7 +392,8 @@ namespace HRwflow.Controllers
                 HashSet<VacancyStates> selectedStates = new();
                 foreach (var item in vacancyStates.Split(','))
                 {
-                    if (Enum.TryParse(item, out VacancyStates state))
+                    if (Enum.TryParse(
+                        item, out VacancyStates state))
                     {
                         selectedStates.Add(state);
                     }
@@ -512,11 +411,8 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Vacancies(int teamId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var teamResult = _workplaceService.GetTeam(Username, teamId);
+            var teamResult = _workplaceService.GetTeam(
+                Username, teamId, TeamPermissions.Observer);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
@@ -524,21 +420,22 @@ namespace HRwflow.Controllers
             var model = new VacancyListVM();
             var creationTimeOffset = model.CreationTimeOffset;
             var lastNoteTimeOffset = model.LastNoteTimeOffset;
-            if (Enum.TryParse(Request.Form.GetValue("creationTimeOffset"),
-                out TimeSpans offset))
+            if (Enum.TryParse(Request.Form.GetValue(
+                "creationTimeOffset"), out TimeSpans offset))
             {
                 creationTimeOffset = offset;
             }
-            if (Enum.TryParse(
-                Request.Form.GetValue("lastNoteTimeOffset"), out offset))
+            if (Enum.TryParse(Request.Form.GetValue(
+                "lastNoteTimeOffset"), out offset))
             {
                 lastNoteTimeOffset = offset;
             }
             HashSet<VacancyStates> selectedStates = new();
-            foreach (var vacancyState in Enum.GetValues<VacancyStates>())
+            foreach (var vacancyState
+                in Enum.GetValues<VacancyStates>())
             {
-                if (Request.Form.GetValue($"vacancyState{vacancyState}")
-                    is not null)
+                if (Request.Form.GetValue(
+                    $"vacancyState{vacancyState}") is not null)
                 {
                     selectedStates.Add(vacancyState);
                 }
@@ -546,10 +443,10 @@ namespace HRwflow.Controllers
             var resultSet = selectedStates.Count > 0
                 ? selectedStates : model.VacancyStates;
             var vacancyStates = string.Join(',', resultSet);
-            var path = $"/workplace/vacancies?teamId={teamId}" +
-                $"&creationTimeOffset={creationTimeOffset}" +
-                $"&lastNoteTimeOffset={lastNoteTimeOffset}" +
-                $"&vacancyStates={vacancyStates}";
+            var path = $"/workplace/vacancies?teamId={teamId}"
+                + $"&creationTimeOffset={creationTimeOffset}"
+                + $"&lastNoteTimeOffset={lastNoteTimeOffset}"
+                + $"&vacancyStates={vacancyStates}";
             return RedirectAndInform(path);
         }
 
@@ -558,17 +455,15 @@ namespace HRwflow.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Vacancy(int vacancyId)
         {
-            if (!TryIdentifyCustomer(out var errorActionResult))
-            {
-                return errorActionResult;
-            }
-            var vacancyResult = _workplaceService.GetVacancy(Username, vacancyId);
+            var vacancyResult = _workplaceService.GetVacancy(
+                Username, vacancyId, TeamPermissions.Observer);
             if (vacancyResult.HasError)
             {
                 return ShowError(vacancyResult.Error);
             }
             var teamResult = _workplaceService.GetTeam(
-                Username, vacancyResult.Value.OwnerTeamId);
+                Username, vacancyResult.Value.OwnerTeamId,
+                TeamPermissions.Observer);
             if (teamResult.HasError)
             {
                 return ShowError(teamResult.Error);
@@ -582,9 +477,10 @@ namespace HRwflow.Controllers
             return View(model);
         }
 
-        private IActionResult ShowError(WorkplaceErrors error)
+        private IActionResult ShowError(CommonErrors error)
         {
-            return View(ErrorPageName, new WorkplaceErrorVM(error));
+            return View("Error",
+                new ErrorVM<CommonErrors>(error));
         }
     }
 }

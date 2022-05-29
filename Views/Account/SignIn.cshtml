@@ -26,7 +26,7 @@
 				<label for="usernameInput" class="form-label">Логин</label>
 				<input type="text" class="form-control text-center" id="usernameInput"
 						name="username" value="@Model.DefaultUsername">
-				@if (!Model.IsUserExists)
+				@if (!Model.IsAccountExists)
 				{
 					<p class="text-info">Пользователь не найден.</p>
 				}
@@ -35,14 +35,14 @@
 				<label for="passwordInput" class="form-label">Пароль</label>
 				<input type="password" class="form-control text-center"
 						id="passwordInput" name="password">
-				@if (!Model.IsPasswordValid && Model.IsUserExists)
+				@if (!Model.IsPasswordRight && Model.IsAccountExists)
 				{
 					<p class="text-info">Неправильный пароль.</p>
 				}
 			</div>
 			<div class="mt-4" align="left">
 				<input class="form-check-input ms-3 me-2" type="checkbox" id="rememberMeChecker"
-					name="rememberMe" @(Model.RememberMeChecked ? "checked" : "")>
+					name="rememberMe" @(Model.IsRememberMeChecked ? "checked" : "")>
 				<label for="rememberMeChecker" class="form-check-label text-dark">
 					Запомнить меня
 				</label>

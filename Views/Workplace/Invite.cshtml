@@ -1,6 +1,20 @@
-﻿@model IdVM<int>
+﻿@model InviteVM
 @{
 	ViewData["Title"] = "Invite";
+	var errorText = !Model.HasError ? null : Model.Error switch
+	{
+		InvitationErrors.UserNotFound
+			=> "Пользователь не найден.",
+		InvitationErrors.UserAlreadyJoined
+			=> "Пользователь уже добавлен в группу.",
+		InvitationErrors.JoinLimitExceeded
+			=> "Пользователь уже состоит в максимально"
+			+ " возможном количестве групп.",
+		InvitationErrors.TeamSizeLimitExceeded
+			=> "В группе может быть не более чем"
+			+ $" {WorkplaceLimits.TeamJoinLimit} участников.",
+		_ => null
+	};
 }
 
 <div class="navbar custom-navbar border-bottom">
@@ -21,6 +35,10 @@
 				<input type="text" class="form-control text-center" id="usernameInput" name="username">
 			</div>
 			<div class="mt-5">
+				@if (errorText is not null)
+				{
+					<p class="text-info">@errorText</p>
+				}
 				<button type="submit" class="btn btn-success">
 					Пригласить
 				</button>
@@ -28,7 +46,7 @@
 		</form>
 	</div>
 	<div class="mt-4">
-		<a class="link-secondary" href="/workplace/team?teamId=@Model.Id">
+		<a class="link-secondary" href="/workplace/team?teamId=@Model.TeamId">
 			Вернуться
 		</a>
 	</div>

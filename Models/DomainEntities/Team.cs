@@ -53,5 +53,9 @@ namespace HRwflow.Models
 
         public bool HasMember(string username)
                     => Permissions.ContainsKey(username);
+
+        public bool MemberHasPermissions(string username,
+            TeamPermissions permissions) => HasMember(username)
+            && Permissions[username].HasFlag(permissions);
     }
 }

@@ -10,9 +10,22 @@ namespace HRwflow.Models
             set => _defaultUsername = value;
         }
 
-        public bool HasErrors => !IsUserExists || !IsPasswordValid;
-        public bool IsPasswordValid { get; set; } = true;
-        public bool IsUserExists { get; set; } = true;
-        public bool RememberMeChecked { get; set; } = true;
+        public SignInErrors Error
+        {
+            set
+            {
+                IsPasswordRight &=
+                    value != SignInErrors.PasswordIsWrong;
+                IsAccountExists &=
+                    value != SignInErrors.AccountNotFound;
+            }
+        }
+
+        public bool HasErrors
+            => !IsAccountExists || !IsPasswordRight;
+
+        public bool IsPasswordRight { get; set; } = true;
+        public bool IsAccountExists { get; set; } = true;
+        public bool IsRememberMeChecked { get; set; } = true;
     }
 }
